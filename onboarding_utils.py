@@ -154,6 +154,7 @@ def update_existing_entities(existing_config, new_config, dump_path):
     Used for onboarded active buildings having existing translations that must not be broken.
     Takes a new config file, compares it with building config for each Entity: if a reporting field in new Virtual Entity
     already exists in its Reporting Entity translation, the original reporting field name is used in the Virtual Entity instead.
+    If there are new fields, they are added to existing translation.
     Args:
         existing_config: path to building config export
         new_config: path to ABEL config
