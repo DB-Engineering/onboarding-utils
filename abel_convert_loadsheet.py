@@ -94,6 +94,7 @@ class Abel():
         
         # entity_fields['rawUnitValue'] = entity_fields['units'] # upd 6/27: must be raw value from payload
         entity_fields['units'] = entity_fields['units'].str.replace('-', '_')
+        entity_fields['objectId'] = entity_fields['objectId'].astype(int)
         entity_fields['extendedObjectType'] = entity_fields['objectType'].map(OBJECT_ID_MAPPING)
         entity_fields['rawFieldName'] = 'data.' + entity_fields['extendedObjectType'] + '_' + entity_fields['objectId'].astype('str') + '.present-value'
         entity_fields['rawUnitPath'] = 'data.' + entity_fields['extendedObjectType'] + '_' + entity_fields['objectId'].astype('str') + '.units'
@@ -388,7 +389,7 @@ class Abel():
             path: path to the export file.
 
         """
-        path = path.split('.')[0].replace('.xlsx', '')
+        path = path.replace('.xlsx', '')
         with pd.ExcelWriter(f'{path}_abel.xlsx') as writer:
             for key in list(self.abel.keys()):
                 pd.DataFrame(self.abel[key]).to_excel(writer, sheet_name=key, index=False)
