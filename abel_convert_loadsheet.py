@@ -100,7 +100,7 @@ class Abel():
         entity_fields['extendedObjectType'] = entity_fields['objectType'].map(OBJECT_ID_MAPPING)
         entity_fields['rawFieldName'] = 'data.' + entity_fields['extendedObjectType'] + '_' + entity_fields['objectId'].astype('str') + '.present-value'
         entity_fields['rawUnitPath'] = 'data.' + entity_fields['extendedObjectType'] + '_' + entity_fields['objectId'].astype('str') + '.units'
-        entity_fields['Missing'] = entity_fields.apply(lambda x: 'TRUE' if x['path'] in value_mapping.MISSING_FILL else 'FALSE', axis=1)
+        entity_fields['Missing'] = entity_fields.apply(lambda x: 'TRUE' if x['path'].strip().lower() in value_mapping.MISSING_FILL else 'FALSE', axis=1)
 
         entity_fields.loc[entity_fields['Missing']=='TRUE', ['rawFieldName', 'rawUnitPath', 'units']] = np.nan # leave fields blank for missing points
 
