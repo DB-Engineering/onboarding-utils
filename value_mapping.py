@@ -1,6 +1,6 @@
 # for adding new fields refer to: https://source.corp.google.com/piper///depot/google3/java/com/google/corp/bizapps/rews/phred/tools/devicesonsheetsimporter/utils/models/States.java
 
-MISSING_FILL = ['MISSING', 'X', 'x']
+MISSING_FILL = ['MISSING', 'X', 'x', 'missing']
 
 OPEN_CLOSED_STATES = {
   "close": "CLOSED",
