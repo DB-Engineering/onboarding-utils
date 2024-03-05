@@ -10,7 +10,8 @@ class Abel():
         self.abel = {
             'Site': {
                 'Building Code': None,
-                'Entity Guid': None
+                'Entity Guid': None,
+                'Etag': None
             },
             'Entities': {
                 'Entity Code': None,
@@ -19,18 +20,18 @@ class Abel():
                 'Is Reporting': None,
                 'Cloud Device ID': None,
                 'DBO Namespace': None,
-                'DBO General Type': None,
-                'DBO Entity Type Name': None
+                'DBO Entity Type Name': None,
+                'Operation': None
             },
             'Entity Fields': {
+                'DBO Standard Field Name': None,
+                'Raw Field Name': None,
+                'Reporting Entity Field': None,
                 'Entity Code': None,
                 'Entity Guid': None,
                 'Reporting Entity Code': None,
                 'Reporting Entity Guid': None,
-                'Reporting Entity Field': None,
-                'DBO Standard Field Name': None,
                 'Missing': None,
-                'Raw Field Name': None,
                 'Raw Unit Path': None,
                 'DBO Standard Unit Value': None,
                 'Raw Unit Value': None
@@ -59,6 +60,7 @@ class Abel():
 
         self.site_code = None
         self.site_guid = None
+        self.site_etag = None
         self.path = None
 
         self.entity_data = None
@@ -180,7 +182,13 @@ class Abel():
         down load full result in csv format and feed the file path in this method:
         https://plx.corp.google.com/scripts2/script_46._66ecd6_a19c_4ed8_8a24_5baea50ff96a
 
-        """        
+        """     
+        # for cases when discovery has empty data property
+        DATA_PLACEHOLDER = {
+            'units':'MISSING DATA',
+            'state-text': 'MISSING DATA'
+        }
+
         def enumerate_fields(dataframe):
             enum = dataframe.sort_values(['reportingEntityGuid', 'standardFieldName', 'rawFieldName'])\
                                 [['reportingEntityGuid', 'standardFieldName', 'rawFieldName']]\
@@ -219,20 +227,19 @@ class Abel():
             return [('active', active), ('inactive', inactive)] if all([active, inactive]) else multi_enum
 
         payload_data = pd.read_csv(path, dtype={'externalId':'str'})
-        payload_data = payload_data[payload_data['entity_code'].isna()==False]
+        payload_data.loc[payload_data['entity_code'].isna()==False, 'code'] = 'EMPTY CODE: PLACEHOLDER'
 
         self.site_code = payload_data.loc[0, 'building']
         self.site_guid = payload_data.loc[0, 'building_guid']
 
         payload_data['discoveryresult'] = payload_data['discoveryresult'].apply(lambda x: json.loads(x))
 
-        payload_data['rawFieldName'] = payload_data['discoveryresult'].apply(lambda x: list(x['data'].keys()))
+        payload_data['rawFieldName'] = payload_data['discoveryresult'].apply(lambda x: list(x['data'].keys()) if x.get('data') else ['MISSING DATA'])
         payload_data = payload_data.explode('rawFieldName')
 
-        payload_data['data'] = payload_data.apply(lambda x: x['discoveryresult']['data'][x['rawFieldName']], axis=1)
+        payload_data['data'] = payload_data.apply(lambda x: x['discoveryresult']['data'].get(x['rawFieldName']) if x['discoveryresult'].get('data') else DATA_PLACEHOLDER, axis=1)
 
-        # payload_data['objectName'] = payload_data.apply(lambda x: x['data'].get('object-name', "MISSING"), axis=1)
-        payload_data['rawUnitValue'] = payload_data.apply(lambda x: x['data'].get('units', "MISSING"), axis=1) # upd 6/27 must be actual raw value from payload
+        payload_data['rawUnitValue'] = payload_data.apply(lambda x: x['data'].get('units', 'MISSING'), axis=1) # upd 6/27 must be actual raw value from payload
         payload_data['state'] = payload_data.apply(lambda x: get_states(x['data'].get('active-text'), 
                                                     x['data'].get('inactive-text'),
                                                     x['data'].get('state-text', None)), axis=1)
@@ -294,12 +301,19 @@ class Abel():
                                                   right_index=False)
         self.entity_data['entityCode'] = self.entity_data.apply(lambda x: x['phred_entityCode'] if x['isReporting']=='TRUE' 
                                                                             else x['entityCode'], axis=1)
-        self.entity_data['entityCode'] = self.entity_data.apply(lambda x: 'MISSING: '+x['deviceId'] if all([pd.isnull(x['phred_entityCode']),
+        self.entity_data['entityCode'] = self.entity_data.apply(lambda x: 'MISSING CODE: '+x['deviceId'] if all([pd.isnull(x['phred_entityCode']),
                                                                                                             x['isReporting']=='TRUE']) else x['entityCode'], axis=1)
+        
         self.entity_data['cloudDeviceId'] = self.entity_data.apply(lambda x: x['phred_cloudDeviceId'] if x['isReporting']=='TRUE' else np.nan, axis=1)
+        self.entity_data['cloudDeviceId'] = self.entity_data.apply(lambda x: 'MISSING ID: '+x['deviceId'] if all([pd.isnull(x['phred_cloudDeviceId']),
+                                                                                                            x['isReporting']=='TRUE']) else x['cloudDeviceId'], axis=1)
+        
         self.entity_data['entityGuid'] = self.entity_data.apply(lambda x: x['phred_reportingEntityGuid'] if x['isReporting']=='TRUE' else x['entityGuid'], axis=1)
+        self.entity_data['entityGuid'] = self.entity_data.apply(lambda x: 'MISSING GUID: '+x['deviceId'] if all([pd.isnull(x['phred_reportingEntityGuid']),
+                                                                                                            x['isReporting']=='TRUE']) else x['entityGuid'], axis=1)
+        self.entity_data['Operation'] = np.nan
         self.entity_data.drop(['phred_cloudDeviceId', 'phred_entityCode', 'phred_reportingEntityGuid'], axis=1, inplace=True)
-        self.entity_data = self.entity_data[['entityCode', 'deviceId', 'entityGuid', 'etag', 'isReporting', 'cloudDeviceId', 'dboNamespace', 'dboGeneralType', 'dboEntityTypeName']]
+        self.entity_data = self.entity_data[['entityCode', 'deviceId', 'entityGuid', 'etag', 'isReporting', 'cloudDeviceId', 'dboNamespace', 'dboGeneralType', 'dboEntityTypeName', 'Operation']]
 
 
         #### UPDATE ENTITY FIELDS DATA ###
@@ -318,10 +332,10 @@ class Abel():
                                                                 right_index=False)
 
         # Add Reporting Entity Code and Reporting Entity Guid
-        reporting_entity_data = self.phred[['deviceId', 'phred_entityCode', 'phred_reportingEntityGuid']]\
+        reporting_entity_data = self.entity_data[['deviceId', 'entityCode', 'entityGuid']]\
                                                         .drop_duplicates()\
-                                                        .rename(columns={'phred_entityCode': 'reportingEntityCode', 
-                                                                         'phred_reportingEntityGuid' :'reportingEntityGuid'})
+                                                        .rename(columns={'entityCode': 'reportingEntityCode', 
+                                                                         'entityGuid' :'reportingEntityGuid'})
         # Add Entity Code and Entity Guid 
         self.entity_fields_data = self.entity_fields_data.merge(reporting_entity_data,
                                                                 how='left',
@@ -329,11 +343,9 @@ class Abel():
                                                                 left_index=False, 
                                                                 right_index=False)
 
-        ### OPTIMIZE WITH A.fillna(B) or A.combine_first(B) TBD
         # fill in missing Entity Guids with placeholder to prevent error in enumeration
         self.entity_fields_data['reportingEntityGuid'] = self.entity_fields_data.apply(lambda x: 'MISSING IN PHRED:'+x['deviceId'] if x['reportingEntityGuid'] is np.nan else x['reportingEntityGuid'], axis=1)
         
-        ### OPTIMIZE WITH A.fillna(B) or A.combine_first(B) TBD
         # Replace Entity Code with Reporting Entity Code in Entity Fields for non-modelled Entities:
         self.entity_fields_data['entityCode'] = self.entity_fields_data.apply(lambda x: x['reportingEntityCode'] if x['entityGuid'] is np.nan else x['fullAssetPath'], axis=1)
 
@@ -369,19 +381,20 @@ class Abel():
 
         self.PAYLOAD_IMPORTED = True
 
-    def import_config(self, path):
+    def import_building_config(self, path):
         with open(path) as f:
-            config = yaml.load(f, Loader=yaml.Loader)
+            building_config = yaml.load(f, Loader=yaml.Loader)
 
-        keys = [key for key in config.keys() if key!='CONFIG_METADATA']
+        entity_dict = {}
 
-        entities = {}
-        for key in keys:
-            entities[key] = config[key]['etag']
+        for key, val in building_config.items():
+            entity_dict[key] = val.get('etag')
 
-        self.entity_data['etag'] = self.entity_data.apply(lambda x: entities.get(x['entityGuid'], np.nan) if x['isReporting']=='TRUE' else np.nan, axis=1)
+        # update etags:
+        self.site_etag = building_config.get(self.site_guid).get('etag') if building_config.get(self.site_guid) else np.nan
+        self.entity_data['etag'] = self.entity_data['entityGuid'].apply(lambda x: building_config.get(x).get('etag') if building_config.get(x) else np.nan)
 
-
+        
     def dump(self, path):
         """
         Export ABEL formatted building config in excel format.
@@ -392,7 +405,7 @@ class Abel():
         path = path.replace('.xlsx', '')
         with pd.ExcelWriter(f'{path}_abel.xlsx') as writer:
             for key in list(self.abel.keys()):
-                pd.DataFrame(self.abel[key]).to_excel(writer, sheet_name=key, index=False)
+                pd.DataFrame(self.abel[key]).to_excel(writer, sheet_name=key, index=False, engine='xlsxwriter')
 
 
     def build(self):
@@ -406,8 +419,8 @@ class Abel():
 
         # Site
         self.abel['Site']['Building Code'] = [self.site_code] if self.site_code else list(self.entity_fields_data.building.unique())
-        self.abel['Site']['Entity Guid'] = [self.site_guid] if self.site_guid else ['']* len(self.entity_fields_data.building.unique())
-
+        self.abel['Site']['Entity Guid'] = [self.site_guid] if self.site_guid else [''] * len(self.entity_fields_data.building.unique())
+        self.abel['Site']['Etag'] = [self.site_etag] if self.site_guid else [''] * len(self.entity_fields_data.building.unique())
 
         # Entity
         self.abel['Entities']['Entity Code'] = self.entity_data['entityCode']
@@ -416,9 +429,8 @@ class Abel():
         self.abel['Entities']['Is Reporting'] = self.entity_data['isReporting']
         self.abel['Entities']['Cloud Device ID'] = self.entity_data['cloudDeviceId']
         self.abel['Entities']['DBO Namespace'] = self.entity_data['dboNamespace']
-        self.abel['Entities']['DBO General Type'] = self.entity_data['dboGeneralType']
         self.abel['Entities']['DBO Entity Type Name'] = self.entity_data['dboEntityTypeName']
-
+        self.abel['Entities']['Operation'] = self.entity_data['Operation']
 
         # Entity Fields
         self.abel['Entity Fields']['Entity Code'] = self.entity_fields_data['entityCode'].to_list()
@@ -433,7 +445,6 @@ class Abel():
         self.abel['Entity Fields']['DBO Standard Unit Value'] = self.entity_fields_data['units'].to_list()
         self.abel['Entity Fields']['Raw Unit Value'] = self.entity_fields_data['rawUnitValue'].tolist()
 
-
         # States
         self.abel['States']['Reporting Entity Code'] = self.states_data['reportingEntityCode'].to_list()
         self.abel['States']['Reporting Entity Guid'] = self.states_data['reportingEntityGuid'].to_list()
@@ -441,7 +452,6 @@ class Abel():
         self.abel['States']['DBO Standard State'] =  self.states_data['dboStandardState'].to_list()
         self.abel['States']['Raw State'] = self.states_data['rawState'].to_list()
         self.abel['States']['Raw State Value'] = self.states_data['rawStateValue'].to_list() # added this field in case manual mapping is necessary
-
 
         # Connections
         # TBD
