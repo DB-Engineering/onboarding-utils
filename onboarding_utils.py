@@ -39,21 +39,31 @@ def export_update_config(building_config_path, abel_config_path, dump_path, enti
     entity_counter = 0
     chunk_counter = 1
 
-    for key, val in abel_config.items():
+    print(len(abel_config.keys()))
+    for idx, items in enumerate(abel_config.items()):
+        key = items[0]
+        val = items[1]
+        print(entity_counter, idx)
 
         if val.get('translation'):
+            if val.get('operation'):
+                val.pop('operation')
+            else: pass
+
             if key in building_config.keys():
                 update_config[key] = {'operation': 'update'} \
                                 | {'etag': building_config[key].get('etag')} \
                                 | val \
-                                | {'update_mask': '[type, translation]'}
+                                | {'update_mask': ['type', 'translation']}
+                print('Added ', key)
+                entity_counter += 1
             else: print(f'Not in building config: {key}')
-            entity_counter += 1
+        else: pass
 
-        else: continue
+        print(entity_counter!=0, any([entity_counter%MAX_ITEMS_PER_CONFIG==0, idx==len(abel_config.keys())-1]))
 
-        if entity_counter!=0 and (entity_counter%MAX_ITEMS_PER_CONFIG==0 or entity_counter==num_reporting_entities):
-            print(f"Saving chunk {chunk_counter}, {entity_counter} entities.")
+        if entity_counter!=0 and any([entity_counter%MAX_ITEMS_PER_CONFIG==0, idx==len(abel_config.keys())-1]):
+            print(f"Saving chunk {chunk_counter}, {entity_counter} entities.\n")
             new_file_name = dump_path.replace('.yaml', f'_pt{chunk_counter}.yaml')
             update_config = config_top | update_config
 
@@ -63,23 +73,9 @@ def export_update_config(building_config_path, abel_config_path, dump_path, enti
                     f.write('\n')
                 f.close()
 
-            # replace quotes around list in update_mask
-            with open(new_file_name, 'r') as f:    
-                config_string = f.read()
-                f.close()
-
-            config_string = config_string.replace("'[type, translation]'", '[type, translation]')\
-                                        .replace('pounds_force_per_square_inch: 4102', "pounds_force_per_square_inch: '4102'")\
-                                        .replace('percent: 4109', "percent: '4109'")
-                    
-            with open(new_file_name, 'w') as f: 
-                f.write(config_string)
-                f.close()
-                
             update_config = {}
             chunk_counter += 1
-
-        else: continue
+        else: pass
 
 
 def export_add_config(building_config_path, abel_config_path, dump_path):
