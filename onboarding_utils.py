@@ -105,13 +105,14 @@ def export_add_config(building_config_path, abel_config_path, dump_path):
         if 'operation' in val.keys():
             val.pop('operation')
         if val.get('translation'):
-            if building_config[key].get('etag'):
-                etag = str(building_config[key].get('etag'))
-            else: etag = 'MISSING ETAG'
             if key in building_config.keys():
-                reporting[key] = {'etag': etag} \
-                                | val
-            else: print(f'Not in building config: {key}')
+                etag = str(building_config[key].get('etag'))
+            else: 
+                etag = 'missing_etag'
+                print(f'Not in building config: {key}')
+
+            reporting[key] = {'etag': etag} \
+                            | val
 
     virtual = {}
     for key, val in abel_config.items():
