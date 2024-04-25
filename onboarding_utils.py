@@ -39,11 +39,9 @@ def export_update_config(building_config_path, abel_config_path, dump_path, enti
     entity_counter = 0
     chunk_counter = 1
 
-    print(len(abel_config.keys()))
     for idx, items in enumerate(abel_config.items()):
         key = items[0]
         val = items[1]
-        print(entity_counter, idx)
 
         if val.get('translation'):
             if val.get('operation'):
@@ -51,16 +49,17 @@ def export_update_config(building_config_path, abel_config_path, dump_path, enti
             else: pass
 
             if key in building_config.keys():
+                if building_config[key].get('etag'):
+                    etag = str(building_config[key].get('etag'))
+                else: etag = 'MISSING ETAG'
                 update_config[key] = {'operation': 'update'} \
-                                | {'etag': building_config[key].get('etag')} \
+                                | {'etag': etag} \
                                 | val \
                                 | {'update_mask': ['type', 'translation']}
                 print('Added ', key)
                 entity_counter += 1
             else: print(f'Not in building config: {key}')
         else: pass
-
-        print(entity_counter!=0, any([entity_counter%MAX_ITEMS_PER_CONFIG==0, idx==len(abel_config.keys())-1]))
 
         if entity_counter!=0 and any([entity_counter%MAX_ITEMS_PER_CONFIG==0, idx==len(abel_config.keys())-1]):
             print(f"Saving chunk {chunk_counter}, {entity_counter} entities.\n")
@@ -75,6 +74,7 @@ def export_update_config(building_config_path, abel_config_path, dump_path, enti
 
             update_config = {}
             chunk_counter += 1
+            entity_counter = 0
         else: pass
 
 
@@ -105,8 +105,11 @@ def export_add_config(building_config_path, abel_config_path, dump_path):
         if 'operation' in val.keys():
             val.pop('operation')
         if val.get('translation'):
+            if building_config[key].get('etag'):
+                etag = str(building_config[key].get('etag'))
+            else: etag = 'MISSING ETAG'
             if key in building_config.keys():
-                reporting[key] = {'etag': building_config[key].get('etag')} \
+                reporting[key] = {'etag': etag} \
                                 | val
             else: print(f'Not in building config: {key}')
 
