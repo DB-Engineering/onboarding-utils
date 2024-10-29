@@ -1,6 +1,9 @@
 import numpy as np
 import pandas as pd
-import ruamel.yaml as yaml
+# import ruamel.yaml as yaml
+from ruamel.yaml import YAML
+
+yaml = YAML(typ='rt')
 
 def export_update_config(building_config_path, abel_config_path, dump_path, entity_list = None, max_items = 50):
     '''
@@ -14,10 +17,10 @@ def export_update_config(building_config_path, abel_config_path, dump_path, enti
     MAX_ITEMS_PER_CONFIG = max_items
 
     with open(building_config_path, 'r') as f:
-        building_config = yaml.load(f, Loader=yaml.RoundTripLoader)
+        building_config = yaml.load(f)
         f.close()
     with open(abel_config_path, 'r') as f:
-        abel_config = yaml.load(f, Loader=yaml.RoundTripLoader)
+        abel_config = yaml.load(f)
         f.close()
 
     new_abel_config = {}
@@ -68,7 +71,7 @@ def export_update_config(building_config_path, abel_config_path, dump_path, enti
 
             with open(new_file_name, 'w') as f:
                 for key, value in update_config.items():
-                    yaml.dump({key: value}, f, Dumper=yaml.RoundTripDumper)
+                    yaml.dump({key: value}, f)
                     f.write('\n')
                 f.close()
 
@@ -87,10 +90,10 @@ def export_add_config(building_config_path, abel_config_path, dump_path):
         dump_path: path to the new onboard-add yaml
     '''
     with open(building_config_path, 'r') as f:
-        building_config = yaml.load(f, Loader=yaml.RoundTripLoader)
+        building_config = yaml.load(f)
         f.close()
     with open(abel_config_path, 'r') as f:
-        abel_config = yaml.load(f, Loader=yaml.RoundTripLoader)
+        abel_config = yaml.load(f)
         f.close()
 
     config_top = {}
@@ -121,7 +124,7 @@ def export_add_config(building_config_path, abel_config_path, dump_path):
     add_config = config_top | reporting | virtual
     with open(dump_path, 'w') as f:
         for key, value in add_config.items():
-            yaml.dump({key: value}, f, Dumper=yaml.RoundTripDumper)
+            yaml.dump({key: value}, f)
             f.write('\n')
         f.close()
 
@@ -134,10 +137,10 @@ def update_etags(building_config_path, onboard_config_path):
         onboard_config_path: path to existing onboard config
     '''
     with open(building_config_path) as f:
-        building_conf = yaml.load(f, Loader=yaml.RoundTripLoader)
+        building_conf = yaml.load(f)
         f.close()
     with open(onboard_config_path) as f:
-        onboard_conf = yaml.load(f, Loader=yaml.RoundTripLoader)
+        onboard_conf = yaml.load(f)
         f.close()
 
     for guid, val in onboard_conf.items():
@@ -149,7 +152,7 @@ def update_etags(building_config_path, onboard_config_path):
 
     with open(onboard_config_path.replace('.yaml','_upd.yaml'), 'w') as f:
         for key, value in onboard_conf.items():
-            yaml.dump({key: value}, f, Dumper=yaml.RoundTripDumper)
+            yaml.dump({key: value}, f)
             f.write('\n')
         f.close()
 
@@ -164,10 +167,10 @@ def update_existing_entities(existing_config, new_config, dump_path):
         new_config: path to ABEL config
     '''
     with open(existing_config) as f:
-        existing = yaml.load(f, Loader=yaml.RoundTripLoader)
+        existing = yaml.load(f)
         f.close()
     with open(new_config) as f:
-        new = yaml.load(f, Loader=yaml.RoundTripLoader)
+        new = yaml.load(f)
         f.close()
         
     reporting_update_path = dump_path.replace('.yaml', '_reporting.yaml')
@@ -255,7 +258,7 @@ def update_existing_entities(existing_config, new_config, dump_path):
             
     with open(reporting_update_path, 'w') as f:
         for key, value in update_config_virtual.items():
-            yaml.dump({key: value}, f, Dumper=yaml.RoundTripDumper)
+            yaml.dump({key: value}, f)
             f.write('\n')
         f.close()
 
@@ -275,7 +278,7 @@ def update_existing_entities(existing_config, new_config, dump_path):
             
         with open(virtual_update_path.replace('update', 'add'), 'w') as f:
             for key, value in add_config_virtual.items():
-                yaml.dump({key: value}, f, Dumper=yaml.RoundTripDumper)
+                yaml.dump({key: value}, f)
                 f.write('\n')
             f.close()
             
@@ -324,13 +327,13 @@ def update_existing_entities(existing_config, new_config, dump_path):
             
         with open(virtual_update_path, 'w') as f:
             for key, value in update_config_virtual.items():
-                yaml.dump({key: value}, f, Dumper=yaml.RoundTripDumper)
+                yaml.dump({key: value}, f)
                 f.write('\n')
             f.close()
      
         # FINAL CHECK
         with open(virtual_update_path, 'r') as f:
-            final_config = yaml.load(f, Loader=yaml.RoundTripLoader)
+            final_config = yaml.load(f)
             f.close()
         translation_check = {
             'virtual_entity_guid': [],
@@ -358,7 +361,7 @@ def export_translations(paths, entities):
     for path in paths:
         print(f'Reading {path}')
         with open(path, 'r') as f:
-            config = yaml.load(f, Loader=yaml.RoundTripLoader)
+            config = yaml.load(f)
             f.close()
         for ve in entities:
             if ve in config.keys():
