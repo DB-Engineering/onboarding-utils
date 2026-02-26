@@ -133,7 +133,6 @@ if __name__=="__main__":
         sys.exit()
 
         print("Processing bacnet scan...")
-        try:
         new_bacnet_scan = {}
         unit_validation = pd.DataFrame()
         new_bacnet_scan['proxy_id validation'] = loadsheet[['device_name', 'assetName', 'cloud_device_id']].drop_duplicates()
