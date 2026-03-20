@@ -8,21 +8,21 @@ from collections import OrderedDict
 # Constants
 # ----------------------------
 STATE_TO_ACTIVE_INACTIVE = {
-    "ON": "active",
-    "OFF": "inactive",
-    "OPEN": "active",
-    "CLOSED": "inactive",
-    "OCCUPIED": "active",
-    "UNOCCUPIED": "inactive",
-    "ACTIVE": "active",
-    "INACTIVE": "inactive",
-    "ENABLED": "active",
-    "DISABLED": "inactive",
-    "PRESENT": "active",
-    "ABSENT": "inactive",
-    "NORMAL": "inactive",
-    "REVERSED": "active",
-    "BYPASS": "active"
+    "ON": "1.0",
+    "OFF": "0.0",
+    "OPEN": "1.0",
+    "CLOSED": "0.0",
+    "OCCUPIED": "1.0",
+    "UNOCCUPIED": "0.0",
+    "ACTIVE": "1.0",
+    "INACTIVE": "0.0",
+    "ENABLED": "1.0",
+    "DISABLED": "0.0",
+    "PRESENT": "1.0",
+    "ABSENT": "0.0",
+    "NORMAL": "0.0",
+    "REVERSED": "1.0",
+    "BYPASS": "1.0"
 }
 
 SUBSTRING_TO_STATES = {
@@ -146,26 +146,27 @@ def process_file(input_file, full_building_config_file):
     # Config processing
     for guid, content in mango_config.items():
         update_reporting_entities[guid] = content
-        for field, subfields in update_reporting_entities[guid].get("translation").items():
-            # Fix alarms
-            if 'alarm' in field:
-                update_reporting_entities[guid]['translation'][field].pop('units')
-                update_reporting_entities[guid]['translation'][field]['states'] = {'ACTIVE' : 'active'}
-                update_reporting_entities[guid]['translation'][field]['states']['INACTIVE'] = 'inactive'
-                continue
-            # Fix states
-            states_substring = "_".join(re.sub(r"_\d+$", "", field).split("_")[-2:])
-            if states_substring in SUBSTRING_TO_STATES:
-                new_states_field = SUBSTRING_TO_STATES[states_substring]
-                update_reporting_entities[guid]['translation'][field].pop('units')
-                update_reporting_entities[guid]['translation'][field]['states'] = {new_states_field[0] : STATE_TO_ACTIVE_INACTIVE[new_states_field[0]]}
-                update_reporting_entities[guid]['translation'][field]['states'][new_states_field[1]] = STATE_TO_ACTIVE_INACTIVE[new_states_field[1]]
-            # Correct underscores/hyphens in units
-            else:
-                unit_pair = next(iter(update_reporting_entities[guid]['translation'][field]['units']['values'].items()))
-                update_reporting_entities[guid]['translation'][field]['units']['values'][unit_pair[0]] = unit_pair[0].replace("_", "-")
-        # Remove duplicate proxy ID
-        update_reporting_entities[guid]['code'] = update_reporting_entities[guid]['code'].split(" ", 1)[1]
+        if update_reporting_entities[guid].get("translation"):
+            for field, subfields in update_reporting_entities[guid].get("translation").items():
+                # Fix alarms
+                if 'alarm' in field:
+                    update_reporting_entities[guid]['translation'][field].pop('units')
+                    update_reporting_entities[guid]['translation'][field]['states'] = {'ACTIVE' : '1.0'}
+                    update_reporting_entities[guid]['translation'][field]['states']['INACTIVE'] = '0.0'
+                    continue
+                # Fix states
+                states_substring = "_".join(re.sub(r"_\d+$", "", field).split("_")[-2:])
+                if states_substring in SUBSTRING_TO_STATES:
+                    new_states_field = SUBSTRING_TO_STATES[states_substring]
+                    update_reporting_entities[guid]['translation'][field].pop('units')
+                    update_reporting_entities[guid]['translation'][field]['states'] = {new_states_field[0] : STATE_TO_ACTIVE_INACTIVE[new_states_field[0]]}
+                    update_reporting_entities[guid]['translation'][field]['states'][new_states_field[1]] = STATE_TO_ACTIVE_INACTIVE[new_states_field[1]]
+                # Correct underscores/hyphens in units
+                else:
+                    unit_pair = next(iter(update_reporting_entities[guid]['translation'][field]['units']['values'].items()))
+                    update_reporting_entities[guid]['translation'][field]['units']['values'][unit_pair[0]] = unit_pair[0].replace("_", "-")
+            # Remove duplicate proxy ID
+            update_reporting_entities[guid]['code'] = update_reporting_entities[guid]['code'].split(" ", 1)[1]
 
     # Split/write YAML
     base_dir = os.path.dirname(input_file)
@@ -179,7 +180,7 @@ def process_file(input_file, full_building_config_file):
 # Entry point
 # ----------------------------
 if __name__ == "__main__":
-    input_file = input("Enter the absolute path to the Mango YAML file: ").strip()
+    input_file = input("Enter the absolute path to the BAMBI output file: ").strip()
     full_building_config_file = input("Enter the absolute path to full_building_config.yaml: ").strip()
     # input_file = '/usr/local/google/home/aadalen/Documents/Onboarding/mango_onboarding/US-PAO-EM25/configs/mango_export.yaml'
     # full_building_config_file = '/usr/local/google/home/aadalen/Documents/Onboarding/mango_onboarding/US-PAO-EM25/configs/full_building_config.yaml'
