@@ -163,8 +163,11 @@ def process_file(input_file, full_building_config_file):
                     update_reporting_entities[guid]['translation'][field]['states'][new_states_field[1]] = STATE_TO_ACTIVE_INACTIVE[new_states_field[1]]
                 # Correct underscores/hyphens in units
                 else:
-                    unit_pair = next(iter(update_reporting_entities[guid]['translation'][field]['units']['values'].items()))
-                    update_reporting_entities[guid]['translation'][field]['units']['values'][unit_pair[0]] = unit_pair[0].replace("_", "-")
+                    units = update_reporting_entities[guid]['translation'][field]['units'].get('values')
+                    if isinstance(units, dict) and "-" in list(units.keys())[0]:
+                        for key, val in units.items():
+                            update_reporting_entities[guid]['translation'][field]['units']['values'] = {key.replace("-", "_"): val}
+
             # Remove duplicate proxy ID
             update_reporting_entities[guid]['code'] = update_reporting_entities[guid]['code'].split(" ", 1)[1]
 
