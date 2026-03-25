@@ -118,76 +118,76 @@ def process_loadsheet(loadsheet: pd.DataFrame, mango_config: pd.DataFrame = None
 
 def process_bacnet_scan(bacnet_scan: pd.DataFrame, loadsheet: pd.DataFrame):
     print("Processing bacnet scan...")
-    # try:
-    new_bacnet_scan = {}
-    unit_validation = pd.DataFrame()
-    new_bacnet_scan['proxy_id validation'] = loadsheet[['device_name', 'assetName', 'cloud_device_id']].drop_duplicates()
-    loadsheet_devices = loadsheet['device_name'].dropna().unique().tolist()
+    try:
+        new_bacnet_scan = {}
+        unit_validation = pd.DataFrame()
+        new_bacnet_scan['proxy_id validation'] = loadsheet[['device_name', 'assetName', 'cloud_device_id']].drop_duplicates()
+        loadsheet_devices = loadsheet['device_name'].dropna().unique().tolist()
 
-    missing_devices = [d for d in loadsheet_devices if d not in bacnet_scan]
-    print("\n [WARNING] Devices not found in bacnet scan, the tabs for these devices will be constructed from loadsheet:\n", ', '.join(missing_devices), "\n")
-
-
-    for sheet_name, df in bacnet_scan.items():
-        if sheet_name == 'devices':
-            temp = df[df['device_name'].isin(loadsheet_devices)] # should reset enumeration for "number"??
-            md = pd.DataFrame({'device_name': missing_devices,
-                                'sanitized_device_name': missing_devices})
-
-            temp = pd.concat([df, md], ignore_index=True).reset_index(drop=True)
-            new_bacnet_scan['devices'] = temp.copy()
-        elif sheet_name in loadsheet_devices:
-            df_result = pd.merge(df.drop(columns=['cloud_device_id', 'cloud_point_name'], errors='ignore'), 
-                                loadsheet.loc[loadsheet['device_name']==sheet_name, 
-                                              ['device_name', 'object', 'cloud_device_id', 'cloud_point_name', 'units', 'controlProgram']],
-                                on=['device_name', 'object'],
-                                how='left')
-            mask = df_result['object'].str.contains('analog', na=False) & df_result['cloud_point_name']
-
-            unit_temp = df_result.loc[mask & 
-                                     (df_result['cloud_point_name']) &
-                                     (df_result['units_or_states']!=df_result['units']), 
-                                                ['controlProgram', 'device_name', 'object', 'point_name', 'cloud_point_name', 'units_or_states', 'units']]
-            unit_temp.columns = ['controlProgram', 'device_id', 'object', 'name', 'DBO_fieldname', 'current_units', 'correct_units']
-
-            df_result.loc[mask, 'units_or_states'] = df_result.loc[mask, 'units']
-            new_bacnet_scan[sheet_name] = df_result.drop(['units', 'controlProgram'], axis=1)
-
-            unit_validation = pd.concat([unit_validation, unit_temp], axis=0)
-        else:
-            # pass
-            print(f"{sheet_name} not in required devices list from loadsheet, skipping.")
-    new_bacnet_scan['unit validation'] = unit_validation
-    print("Bacnet scan processed successfully.")
-
-    for dev in missing_devices:
-        # recreate tabs for missing devices
-        ls = loadsheet.loc[loadsheet['device_name']==dev, ['name', 'object', 'objectName', 'cloud_device_id', 'cloud_point_name', 'units']]
-        temp = pd.DataFrame()
-
-        temp["point_name"] = ls['objectName'].copy()
-        temp["device_name"], temp["sanitized_device_name"] = dev, dev
-        temp["value"] = ''
-        temp["units_or_states"] = ls['units'].copy()
-        temp["description"] = ls['name'].copy()
-        temp["object"] = ls['object'].copy()
-        temp["cloud_device_id"] = ls['cloud_device_id']
-        temp["cloud_point_name"] = ls['cloud_point_name']
-        temp["cloud_value"], temp["validation_status"] = '', ''
-
-        new_bacnet_scan[dev] = temp
-
-    return {
-    'proxy_id validation': new_bacnet_scan['proxy_id validation'],
-    'unit validation': new_bacnet_scan['unit validation'],
-    'devices': new_bacnet_scan['devices']} | {k: new_bacnet_scan[k] for k in sorted(new_bacnet_scan.keys()) if k not in ['devices', 'proxy_id validation', '']}
-
-    # except Exception as e:
-    #     print(f"Unable to process bacnet scan: {e}")
-    #     sys.exit()
+        missing_devices = [d for d in loadsheet_devices if d not in bacnet_scan]
+        print("\n [WARNING] Devices not found in bacnet scan, the tabs for these devices will be constructed from loadsheet:\n", ', '.join(missing_devices), "\n")
 
 
-if __name__=="__main__":
+        for sheet_name, df in bacnet_scan.items():
+            if sheet_name == 'devices':
+                temp = df[df['device_name'].isin(loadsheet_devices)] # should reset enumeration for "number"??
+                md = pd.DataFrame({'device_name': missing_devices,
+                                    'sanitized_device_name': missing_devices})
+
+                temp = pd.concat([df, md], ignore_index=True).reset_index(drop=True)
+                new_bacnet_scan['devices'] = temp.copy()
+            elif sheet_name in loadsheet_devices:
+                df_result = pd.merge(df.drop(columns=['cloud_device_id', 'cloud_point_name'], errors='ignore'), 
+                                    loadsheet.loc[loadsheet['device_name']==sheet_name, 
+                                                  ['device_name', 'object', 'cloud_device_id', 'cloud_point_name', 'units', 'controlProgram']],
+                                    on=['device_name', 'object'],
+                                    how='left')
+                mask = df_result['object'].str.contains('analog', na=False) & df_result['cloud_point_name']
+
+                unit_temp = df_result.loc[mask & 
+                                         (df_result['cloud_point_name']) &
+                                         (df_result['units_or_states']!=df_result['units']), 
+                                                    ['controlProgram', 'device_name', 'object', 'point_name', 'cloud_point_name', 'units_or_states', 'units']]
+                unit_temp.columns = ['controlProgram', 'device_id', 'object', 'name', 'DBO_fieldname', 'current_units', 'correct_units']
+
+                df_result.loc[mask, 'units_or_states'] = df_result.loc[mask, 'units']
+                new_bacnet_scan[sheet_name] = df_result.drop(['units', 'controlProgram'], axis=1)
+
+                unit_validation = pd.concat([unit_validation, unit_temp], axis=0)
+            else:
+                # pass
+                print(f"{sheet_name} not in required devices list from loadsheet, skipping.")
+        new_bacnet_scan['unit validation'] = unit_validation
+        print("Bacnet scan processed successfully.")
+
+        for dev in missing_devices:
+            # recreate tabs for missing devices
+            ls = loadsheet.loc[loadsheet['device_name']==dev, ['name', 'object', 'objectName', 'cloud_device_id', 'cloud_point_name', 'units']]
+            temp = pd.DataFrame()
+
+            temp["point_name"] = ls['objectName'].copy()
+            temp["device_name"], temp["sanitized_device_name"] = dev, dev
+            temp["value"] = ''
+            temp["units_or_states"] = ls['units'].copy()
+            temp["description"] = ls['name'].copy()
+            temp["object"] = ls['object'].copy()
+            temp["cloud_device_id"] = ls['cloud_device_id']
+            temp["cloud_point_name"] = ls['cloud_point_name']
+            temp["cloud_value"], temp["validation_status"] = '', ''
+
+            new_bacnet_scan[dev] = temp
+
+        return {
+        'proxy_id validation': new_bacnet_scan['proxy_id validation'],
+        'unit validation': new_bacnet_scan['unit validation'],
+        'devices': new_bacnet_scan['devices']} | {k: new_bacnet_scan[k] for k in sorted(new_bacnet_scan.keys()) if k not in ['devices', 'proxy_id validation', '']}
+
+    except Exception as e:
+        print(f"Unable to process bacnet scan: {e}")
+        sys.exit()
+
+
+def main():
     mango_config_prompt = input("Would you like to load a mango config file? Y/N: ")
     if mango_config_prompt.lower()=='y':
         mango_config_path = input("Insert path to mango config (.csv): ")
@@ -203,6 +203,9 @@ if __name__=="__main__":
 
 
     loadsheet_path = input("Insert path to loadsheet (.xlsx): ")
+    if not(loadsheet_path):
+        raise ValueError("Loadsheet path is required!")
+
     #load loadsheet
     try:
         loadsheet = load_file(loadsheet_path, dtype=str)
@@ -216,6 +219,9 @@ if __name__=="__main__":
         loadsheet = process_loadsheet(loadsheet, mango_config)
 
     bscan_path = input("Insert path to bacnet scan (.xlsx): ")
+    if not(bscan_path):
+        raise ValueError("Bacnet-scan path is required!")
+
     # load bacnet scan
     try:
         bacnet_scan = load_file(bscan_path, sheet_name=None, dtype=str)
@@ -236,3 +242,6 @@ if __name__=="__main__":
     except Exception as e:
         print(f"Unable to save file: {e}")
         sys.exit()
+
+if __name__=="__main__":
+    main()

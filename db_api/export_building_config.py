@@ -122,7 +122,7 @@ def clean_export_file(outfile_path):
         with open(outfile_path, "w", encoding="utf-8") as fh:
             fh.write(cleaned_content)
 
-        print("✅ Building config successfully refreshed")
+        print("✅ Building config successfully exported")
 
     except Exception as e:
         print(f"⚠️ Failed to clean file {outfile_path}: {e}")
@@ -131,8 +131,11 @@ def clean_export_file(outfile_path):
 # ----------------------------
 # Main
 # ----------------------------
-if __name__ == "__main__":
+def main():
     building_code = input("Enter building code (format US-XXX-YYY): ").strip()
     outfile_path = input("Enter absolute path for output full_building_config.yaml: ").strip()
 
     export_building_config(building_code, outfile_path)
+
+if __name__ == "__main__":
+    main()

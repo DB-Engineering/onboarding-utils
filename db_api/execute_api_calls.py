@@ -3,9 +3,8 @@ import re
 import os
 import time
 import sys
-import transfer_etags
-import export_building_config  # import our new export logic
-
+from . import update_etags
+from . import export_building_config
 
 # ----------------------------
 # Helper functions
@@ -107,7 +106,6 @@ def run_onboard_and_get_status(building_code, topology_file_path, result_file_pa
             print(f"Config onboarding succeeded.")
         return True
 
-
 def build_result_path(cfg_path):
     parent_dir = os.path.dirname(cfg_path)
     base_dir = os.path.basename(parent_dir)
@@ -157,7 +155,7 @@ def analyze_results(result_files):
 # ----------------------------
 # Main script
 # ----------------------------
-if __name__ == "__main__":
+def main():
     building_code = input("Enter building code (format US-XXX-YYY): ").strip()
 
     print("\nChoose input mode:")
@@ -255,3 +253,6 @@ if __name__ == "__main__":
         print(f"Moving to next file...")
 
     analyze_results(result_files)
+
+if __name__ == "__main__":
+    main()
