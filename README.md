@@ -14,12 +14,12 @@ python3 -m venv .venv
 
 * MacOs/Linux: source
 ```bash
-tooling/bin/activate
+source .venv/bin/activate
 ```
 
 * Windows:
 ```bash
-tooling\Scripts\activate
+.venv\Scripts\activate
 ```
 
 ### 3. Install packages:
