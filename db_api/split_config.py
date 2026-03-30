@@ -2,7 +2,10 @@ import os
 import yaml
 
 
-def split_yaml_configs(yaml_file):
+def split_yaml_configs(yaml_file=None):
+    if not yaml_file:
+        yaml_file = input("Enter path to input YAML file: ").strip()
+
     # === Load YAML ===
     with open(yaml_file, "r") as f:
         data = yaml.safe_load(f)
@@ -55,6 +58,8 @@ def split_yaml_configs(yaml_file):
 
     print(f"✅ Done. Created {created_count} files in '{output_dir}'.")
 
+def main():
+    split_yaml_configs()
 
 # === Run ===
 if __name__ == "__main__":
