@@ -1,7 +1,7 @@
 import os
 import cmd
 import sys
-from mango import loadsheet_to_bacnet_scan, loadsheet_to_building_config
+from mango import loadsheet_to_bacnet_scan, loadsheet_to_building_config, combine_bacnet_scans
 from db_api import execute_api_calls, split_config, export_building_config
 
 class Mapper(cmd.Cmd):
@@ -48,6 +48,7 @@ class Mapper(cmd.Cmd):
         print('3: Export a new building config')
         print('4: Split a building config')
         print('5: Run an onboarding operation')
+        print('6: Combine multiple bacnet-scans into one')
         print('q: quit\n')
 
     def do_1(self, arg):
@@ -57,10 +58,10 @@ class Mapper(cmd.Cmd):
                 bacnet-scan:\t\t[required]\toutput of a bacnet-scan tool, format: [.xlsx]
                 mango config file:\t[optional]\tneeded for identifying existing proxy_id
                 """)
-        try:
-            loadsheet_to_bacnet_scan.main()
-        except Exception as e:
-            print(f"[ERROR]: Unable to create building config: {e}")
+        # try:
+        loadsheet_to_bacnet_scan.main()
+        # except Exception as e:
+        #     print(f"[ERROR]: Unable to create building config: {e}")
 
     def do_2(self, arg):
         """Create a building config from loadsheet"""
@@ -95,6 +96,13 @@ class Mapper(cmd.Cmd):
             execute_api_calls.main() 
         except Exception as e:
             print(f"[ERROR]: Unable to run onboarding operation: {e}")
+
+    def do_6(self, arg):
+        """Combine multiple bacnet-scans into one"""
+        try:
+            combine_bacnet_scans.main() 
+        except Exception as e:
+            print(f"[ERROR]: Unable to combine bacnet-scans: {e}")
 
     def do_q(self, arg):
         """Quits Program"""
