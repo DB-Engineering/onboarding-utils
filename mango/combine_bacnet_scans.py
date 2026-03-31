@@ -75,6 +75,7 @@ def process_bacnet_files(folder_path, bacnet_ids):
         # Validation: flag files with more than one device tab
         if len(device_tabs) > 1:
             # print(f"  ⚠️ File {file_name} contains multiple device tabs: {device_tabs}")
+            pass
 
         # Step 1: Append 'devices' tab
         if "devices" in xls.sheet_names:
