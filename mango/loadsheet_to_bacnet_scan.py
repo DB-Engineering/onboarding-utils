@@ -140,17 +140,20 @@ def process_bacnet_scan(bacnet_scan: pd.DataFrame, loadsheet: pd.DataFrame):
             df_result = pd.merge(loadsheet.loc[
                                                   loadsheet['device_name']==sheet_name, 
                                                   ['device_name', 'object', 'cloud_device_id', 
-                                                  'cloud_point_name', 'units', 'controlProgram', 'objectName']
+                                                  'cloud_point_name', 'units', 'location', 'controlProgram', 'name', 'objectName']
                                               ],
                                  df.drop(columns=['cloud_device_id', 'cloud_point_name'], errors='ignore'), 
                                 on=['device_name', 'object'],
-                                how='left',
+                                how='outer',
                                 indicator=True)
+            df_result.loc[df_result['sanitized_device_name'].isna()==True, 'sanitized_device_name'] = df_result.loc[df_result['sanitized_device_name'].isna()==True, 'device_name']
+            df_result.loc[df_result['description'].isna()==True, 'description'] = df_result.loc[df_result['description'].isna()==True, 'name']
+            df_result.loc[df_result['point_name'].isna()==True, 'point_name'] = df_result.loc[df_result['point_name'].isna()==True, 'objectName']
 
             missing_points = df_result.loc[
                                             df_result['_merge'] == 'left_only', 
-                                            ['controlProgram', 'device_name', 'object', 'objectName', 'cloud_point_name']]
-            missing_points.columns = ['controlProgram', 'device_name', 'object', 'objectName', 'standard_field_name']
+                                            ['location', 'controlProgram', 'device_name', 'object', 'objectName', 'cloud_point_name']]
+            missing_points.columns = ['location', 'controlProgram', 'device_name', 'object', 'objectName', 'standard_field_name']
 
             network_visibility = pd.concat([network_visibility, missing_points], axis=0)
 
@@ -160,8 +163,8 @@ def process_bacnet_scan(bacnet_scan: pd.DataFrame, loadsheet: pd.DataFrame):
                                      (df_result['cloud_point_name']) &
                                      (df_result['units_or_states']!=df_result['units']) &
                                      (df_result['units_or_states'].isna()==False), 
-                                     ['controlProgram', 'device_name', 'object', 'point_name', 'cloud_point_name', 'units_or_states', 'units']]
-            unit_temp.columns = ['controlProgram', 'device_id', 'object', 'name', 'DBO_fieldname', 'current_units', 'correct_units']
+                                     ['location', 'controlProgram', 'device_name', 'object', 'point_name', 'cloud_point_name', 'units_or_states', 'units']]
+            unit_temp.columns = ['location', 'controlProgram', 'device_id', 'object', 'name', 'DBO_fieldname', 'current_units', 'correct_units']
 
             df_result.loc[mask, 'units_or_states'] = df_result.loc[mask, 'units']
             new_bacnet_scan[sheet_name] = df_result[['point_name', 'device_name', 'sanitized_device_name', 'value', 'units_or_states', 
