@@ -106,3 +106,56 @@ class Entity():
                         "translation": {field.dbo_field_name: field.to_dict() for field in self.fields}
                     }
                 }
+
+class Site():
+    def __init__(self, name, guid):
+        self._name = name
+        self.guid = guid
+        self.entities = []
+        self._cloud_id_to_entity_map = {}
+
+    @property
+    def name(self):
+        return self._name
+
+    @classmethod
+    def from_config(cls, config_path: str):
+        config = helpers.load_file(config_path)
+        if not isinstance(config, dict):
+            raise TypeError("Config must be a dictionary.")
+
+        for key, val in config.items():
+            if val.get("type")=='FACILITIES/BUILDING':
+                site = cls(
+                    name=val.get('code'),
+                    guid=key
+                    )
+
+        for key, val in config.items():
+            if key == "CONFIG_METADATA":
+                continue
+            if val.get("type")=='FACILITIES/BUILDING':
+                continue
+
+            entity = Entity(
+                guid=key,
+                code=val.get("code"),
+                etag=val.get("etag"),
+                proxy_id=None,
+                cloud_device_id=str(val.get("cloud_device_id")), 
+                namespace=val.get("type").split("/")[0] if val.get("type") else None,
+                type_name=val.get("type"),
+                display_name=val.get("display_name"),
+                operation=None
+                )
+
+            site.entities.append(entity)
+            site._cloud_id_to_entity_map[val.get("cloud_device_id")] = entity
+
+        return site
+
+    def get_entity_by_num_id(self, num_id):
+        return self._cloud_id_to_entity_map.get(str(num_id))
+
+
+

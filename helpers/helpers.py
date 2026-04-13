@@ -24,6 +24,46 @@ OBJECT_ID_MAP_SITE_MODEL_TO_BMS = {
     "MULTI_STATE_VALUE": "MSV"
 }
 
+def snake_to_camel(x: str):
+    if not isinstance(x, str):
+        return None
+    x.replace("_", "-")
+    parts = x.split('-')
+    if len(parts) > 1:
+        return parts[0] + ''.join(p.capitalize() for p in parts[1:])
+    else: return x
+
+def camel_to_snake(text):
+    res = []
+    for i, char in enumerate(text):
+        # If the char is uppercase and not the very first character,
+        # prepend an underscore.
+        if char.isupper() and i > 0:
+            res.append('_')
+        res.append(char.lower())
+    return "".join(res)
+
+def device_id_to_ip_addr(device_id: str):
+    """
+    Takes in a device bacnet id and returns string of format: {network}:{ip} for bacnet-scan/devices "ip_address" column.
+    {network} part is first 5 digits, the remaining 2 is ip. If ip starts with "0", "0" is omitted.
+    If length of numeric part is not 7 digits long, returns the same string back.
+    Ex: 
+        bacnet3002617 -> 30026:17
+        3002617 -> 30026:17
+        3002605 -> 30026:5 (ip part starts with 0)
+        300260-> 300260 (not 7 digits)
+    """ 
+    device_id = "".join(d for d in device_id if d.isdigit())
+    if len(device_id)==7:
+        network = device_id[:5]
+        ip = device_id[:2]
+        if ip[0] == 0:
+            ip = ip[1:]
+        return f"{network}:{ip}"
+    else:
+        return device_id
+
 def load_file(file_path, **kwargs):
     if not os.path.exists(file_path):
         print(f"File not found: {file_path}")

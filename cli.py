@@ -1,7 +1,7 @@
 import os
 import cmd
 import sys
-from mango import loadsheet_to_bacnet_scan, loadsheet_to_building_config, combine_bacnet_scans
+from mango import loadsheet_to_bacnet_scan, loadsheet_to_building_config, combine_bacnet_scans, augment_site_model
 from db_api import execute_api_calls, split_config, export_building_config
 
 class Mapper(cmd.Cmd):
@@ -48,6 +48,7 @@ class Mapper(cmd.Cmd):
         print('4: Split a building config')
         print('5: Run an onboarding operation')
         print('6: Combine multiple bacnet-scans into one')
+        print('7: Augment Site Model')
         print('q: quit\n')
 
     def do_1(self, arg):
@@ -103,6 +104,19 @@ class Mapper(cmd.Cmd):
         except Exception as e:
             print(f"[ERROR]: Unable to combine bacnet-scans: {e}")
 
+    def do_7(self, arg):
+        """Create a building config from loadsheet"""
+        print("""The following inputs will be needed:
+                loadsheet:\t\t[required]\tloadsheet, format: [.xlsx]
+                device discovery:\t[required]\tquery result from https://plx.corp.google.com/scripts2/script_5e._f704e7_7fe1_486b_8d3c_f3a20190d94e [.csv]
+                carson config:\t\t[required]\tfresh Building Config export from DB API [.yaml]
+                site model:\t\t[required]\ta path to the clone of the site from Cloud Source Repo
+                """)
+        # try:
+        augment_site_model.main()
+        # except Exception as e:
+        #     print(f"[ERROR]: Unable to augment site model: {e}")
+
     def do_q(self, arg):
         """Quits Program"""
         print("Goodbye!")
@@ -119,6 +133,8 @@ class Mapper(cmd.Cmd):
         if line == '3': return self.do_3(None)
         if line == '4': return self.do_4(None)
         if line == '5': return self.do_5(None)
+        if line == '6': return self.do_6(None)
+        if line == '6': return self.do_7(None)
         if line == 'q': return self.do_q(None)
         print(f"*** Unknown syntax: {line}. Please choose 1-4 or q.")
 

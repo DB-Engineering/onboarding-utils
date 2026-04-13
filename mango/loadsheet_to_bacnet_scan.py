@@ -34,15 +34,6 @@ def finalize_id(row):
         return f"{row['cloud_device_id']}{int(row['suffix'])}"
     return str(row['cloud_device_id'])
 
-def to_camel(x: str):
-    if not isinstance(x, str):
-        return None
-    x.replace("_", "-")
-    parts = x.split('-')
-    if len(parts) > 1:
-        return parts[0] + ''.join(p.capitalize() for p in parts[1:])
-    else: return x
-
 def process_mango_config(mango_config: pd.DataFrame):
     print("Processing mango config...")
     try:
@@ -71,7 +62,7 @@ def process_loadsheet(loadsheet: pd.DataFrame, mango_config: pd.DataFrame = None
     try:
         loadsheet = loadsheet.loc[(loadsheet['required']=='YES') & (loadsheet['isMissing']!='YES'), :]
         loadsheet.loc[:, 'device_name'] = loadsheet['deviceId'].str.replace('DEV:', 'device')
-        loadsheet.loc[:, 'units'] = loadsheet['units'].apply(to_camel)
+        loadsheet.loc[:, 'units'] = loadsheet['units'].apply(helpers.snake_to_camel)
 
         # generate proxy id for each asset
 
@@ -128,9 +119,13 @@ def process_bacnet_scan(bacnet_scan: pd.DataFrame, loadsheet: pd.DataFrame):
 
     for sheet_name, df in bacnet_scan.items():
         if sheet_name == 'devices':
-            temp = df[df['device_name'].isin(loadsheet_devices)] # should reset enumeration for "number"??
-            md = pd.DataFrame({'device_name': missing_devices,
-                                'sanitized_device_name': missing_devices})
+            temp = df[df['device_name'].isin(loadsheet_devices)]
+            md = pd.DataFrame({
+                'device_name': missing_devices,
+                'sanitized_device_name': missing_devices,
+                'ip_address': [helpers.device_id_to_ip_addr(d) for d in missing_devices],
+                'device_id': [d.replace('device', '') for d in missing_devices]
+                })
 
             temp = pd.concat([df, md], ignore_index=True)
             temp['number'] = temp.index

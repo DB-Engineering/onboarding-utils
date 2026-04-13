@@ -2,6 +2,12 @@ import os
 from helpers import helpers
 
 def parse_object_id(dp_string):
+    """
+    Parses device_id and object_id from a metadata string.
+    Example:
+    Input:          'DP_2800039_ANALOG_VALUE_68'.
+    Returned tuple: ('2800039', 'AV:68')
+    """
     try:
         parts = dp_string.split("_")
         numeric_id = parts[1]
@@ -13,10 +19,12 @@ def parse_object_id(dp_string):
         return None, None
 
 class Device:
-    def __init__(self, proxy_id=None, numeric_id=None, point_list=None):
+    def __init__(self, proxy_id=None, numeric_id=None, point_list=None, device_list=None, metadata=None):
         self._proxy_id = proxy_id
         self._numeric_id = numeric_id
+        self._metadata = metadata
         self.point_index = point_list or []
+        self._device_index = device_list or []
 
     def __repr__(self):
         return (f"proxy_id: {self._proxy_id}, numeric_id: {self._numeric_id}")
@@ -41,6 +49,20 @@ class Device:
             raise ValueError("numeric_id must be a string or None")
         self._numeric_id = value
 
+    @property
+    def device_index(self):
+        return self._device_index
+
+    @property
+    def metadata(self):
+        return self._metadata
+
+    @metadata.setter
+    def metadata(self, value):
+        if not isinstance(value, dict) and value is not None:
+            raise ValueError("numeric_id must be a dictionary or None")
+        self._metadata = value
+
     @classmethod
     def from_metadata(cls, name, metadata_dict):
         """Creates a Device instance from a dictionary."""
@@ -50,17 +72,27 @@ class Device:
             pass
 
         points_found = []
+        devices_found = []
         points_data = metadata_dict.get("pointset", {}).get("points") or {}
         for k, v in points_data.items():
             device_id, object_id = parse_object_id(v.get("ref"))
             if not (device_id and object_id):
                 continue
 
+            if not device_id in devices_found:
+                devices_found.append(device_id)
+
             point_id = f"{device_id}:{object_id}"
             if not point_id in points_found:
                 points_found.append(point_id)
             
-        return cls(proxy_id=name, numeric_id=num_id, point_list=points_found)
+        return cls(
+                proxy_id=name,
+                numeric_id=num_id,
+                point_list=points_found,
+                device_list=devices_found,
+                metadata=metadata_dict
+                )
 
 class SiteModel():
     def __init__(self):
@@ -74,6 +106,8 @@ class SiteModel():
             return
         self.devices[device.proxy_id] = device
 
+        if not device.point_index:
+            return
         for pt in device.point_index:
             # add any shared points in a separate index
             if pt in self._point_to_device_map:

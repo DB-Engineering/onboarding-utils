@@ -24,6 +24,8 @@ def sync_etags(full_building_config_file, target_file):
     for uuid, target_entity in target_data.items():
         if uuid == "CONFIG_METADATA":
             continue
+        if target_entity.get('operation') in ('ADD', 'add'):
+            continue
         total_entities += 1
         if uuid in full_building_data and "etag" in full_building_data[uuid]:
             target_entity["etag"] = SingleQuoted(str(full_building_data[uuid]["etag"]))
