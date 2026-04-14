@@ -19,11 +19,11 @@ def parse_object_id(dp_string):
         return None, None
 
 class Device:
-    def __init__(self, proxy_id=None, numeric_id=None, point_list=None, device_list=None, metadata=None):
+    def __init__(self, proxy_id=None, numeric_id=None, point_dict=None, device_list=None, metadata=None):
         self._proxy_id = proxy_id
         self._numeric_id = numeric_id
         self._metadata = metadata
-        self.point_index = point_list or []
+        self.point_index = point_dict or {}
         self._device_index = device_list or []
 
     def __repr__(self):
@@ -63,6 +63,12 @@ class Device:
             raise ValueError("numeric_id must be a dictionary or None")
         self._metadata = value
 
+    def get_field_name_by_object_id(self, device_id: str, object_id: str):
+        """
+        Takes in device_id (3002201) and object_id (AV:1) and returns field name associated with this object in the device metadata.
+        """
+        return self.point_index.get(f"{device_id}:{object_id}")
+
     @classmethod
     def from_metadata(cls, name, metadata_dict):
         """Creates a Device instance from a dictionary."""
@@ -71,7 +77,7 @@ class Device:
             # print(f"[WARNING] Device numeric id not found for {name} in site model.")
             pass
 
-        points_found = []
+        points_found = {}
         devices_found = []
         points_data = metadata_dict.get("pointset", {}).get("points") or {}
         for k, v in points_data.items():
@@ -84,12 +90,12 @@ class Device:
 
             point_id = f"{device_id}:{object_id}"
             if not point_id in points_found:
-                points_found.append(point_id)
+                points_found[point_id] = k
             
         return cls(
                 proxy_id=name,
                 numeric_id=num_id,
-                point_list=points_found,
+                point_dict=points_found,
                 device_list=devices_found,
                 metadata=metadata_dict
                 )

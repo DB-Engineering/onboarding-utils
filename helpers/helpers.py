@@ -152,6 +152,8 @@ def map_units(fieldname):
     elif "torque" in fieldname:
         return "newton-meters"
     elif "cooling_thermal_power" in fieldname:
+        return "btus-per-hour"
+    elif "cooling_thermal_power" in fieldname:
         return "tons-of-refrigeration"
     elif "power" in fieldname:
         return "kilowatts"

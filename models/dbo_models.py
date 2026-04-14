@@ -8,10 +8,17 @@ class Field(ABC):
     def __init__(self, field_name):
         self.dbo_field_name = field_name
 
+    @abstractmethod
+    def get_units(self):
+        pass
+
 class UnitField(Field):
     def __init__(self, field_name, dbo_unit):
         super().__init__(field_name)
         self.dbo_unit = dbo_unit.replace("-", "_")
+
+    def get_units(self):
+        return self.dbo_unit
 
     def to_dict(self):
         return {
@@ -28,6 +35,9 @@ class StateField(Field):
     def __init__(self, field_name, dbo_states: dict):
         super().__init__(field_name)
         self.dbo_states = dbo_states
+
+    def get_units(self):
+        return "no_units"
 
     def to_dict(self):
         return {
@@ -91,9 +101,16 @@ class Entity():
                     else:
                         raise ValueError(f"[ERROR] {k}: unknown objectType: {obj_type}")
                         continue
+
         except Exception as e:
             print(f"[ERROR] Unable to add field: {k} due to: {e}")
             return False
+
+    def get_units_by_field_name(self, field_name):
+        for field in self.fields:
+            if field.dbo_field_name == field_name:
+                return field.get_units()
+        return None
 
     def to_dict(self):
         return {

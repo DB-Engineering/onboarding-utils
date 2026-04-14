@@ -1,5 +1,6 @@
 import os
 import json
+import copy
 
 from helpers import helpers
 from models import dbo_models, cloud_models
@@ -25,6 +26,12 @@ def main():
     loadsheet = loadsheet.loc[loadsheet["required"]=="YES"]
     loadsheet["deviceIdStripped"] = loadsheet["deviceId"].str.replace("DEV:", "")
 
+    for entity in carson_config.entities:
+        loadsheet_slice = loadsheet.loc[loadsheet["assetName"]==entity.display_name, :]
+        fields = loadsheet_slice.set_index("standardFieldName", drop=True)[["units", "deviceId", "objectType", 
+                                                                            "objectId", "isMissing"]].T.to_dict()
+
+        entity.add_fields_from_dict(fields)
 
     if not os.path.exists(site_model_path):
         print(f"Directory not found: {site_model_path}")
@@ -55,17 +62,13 @@ def main():
         device = cloud_models.Device.from_metadata(d, metadata)
 
         # ------ AUGMENTATION DATA ------
-        loadsheet_slice = loadsheet.loc[loadsheet["deviceIdStripped"].isin(device.device_index)==True, :]
-        if len(loadsheet_slice) == 0:
-            continue
-
-        system_name = ', '.join(loadsheet_slice['controlProgram'].sort_values().unique().tolist())
         system_description = ", ".join([f"bacnet:{i}" for i in device.device_index])
         system_tags = ["bacnet", "hvac", "serial"]
 
         discovery_match = device_discovery.loc[device_discovery["device_id"] == device.proxy_id, "device_num_id"]
 
         cloud_num_id = None
+        system_name = None
         physical_tag_asset_guid = None
 
         if not discovery_match.empty:
@@ -73,6 +76,7 @@ def main():
             entity = carson_config.get_entity_by_num_id(str(cloud_num_id))
             if entity:
                 physical_tag_asset_guid = f"uuid://{entity.guid}"
+                system_name = entity.code
 
         physical_tag_asset_name = device.proxy_id
         families_bacnet_addr = ", ".join([i for i in device.device_index])
@@ -84,32 +88,34 @@ Augmenting {item_path} with following information:
     device: {device.proxy_id}
     system/description: {system_description}
     system/tags: {system_tags}
+    system/name: {system_name}
     physical_tag/asset_name: {physical_tag_asset_name}
     physical_tag/asset_guid: {physical_tag_asset_guid}
     cloud/num_id: {cloud_num_id}
     families/bacnet/addr: {families_bacnet_addr}
     families/bacnet/network: {families_bacnet_network}
+    units (not printed)
         """)
 
-        augmented_metadata = device.metadata.copy()
+        augmented_metadata = copy.deepcopy(device.metadata)
 
         if "system" not in augmented_metadata:
             augmented_metadata["system"] = {}
 
-        augmented_metadata["system"]["name"] = system_name
+        augmented_metadata["system"]["name"] = system_name or ""
         augmented_metadata["system"]["description"] = system_description
         augmented_metadata["system"]["tags"] = system_tags
 
         if "physical_tag" not in augmented_metadata["system"]:
             augmented_metadata["system"]["physical_tag"] = {"asset": {}}
         
-        augmented_metadata["system"]["physical_tag"]["asset"]["guid"] = physical_tag_asset_guid
+        augmented_metadata["system"]["physical_tag"]["asset"]["guid"] = physical_tag_asset_guid or ""
         augmented_metadata["system"]["physical_tag"]["asset"]["site"] = carson_config.name
         augmented_metadata["system"]["physical_tag"]["asset"]["name"] = physical_tag_asset_name
 
         if "cloud" not in augmented_metadata:
             augmented_metadata["cloud"] = {}
-        augmented_metadata["cloud"]["num_id"] = cloud_num_id
+        augmented_metadata["cloud"]["num_id"] = cloud_num_id or ""
 
         if "localnet" not in augmented_metadata:
             augmented_metadata["localnet"] = {}
@@ -121,6 +127,10 @@ Augmenting {item_path} with following information:
 
         augmented_metadata["localnet"]["families"]["bacnet"]["addr"] = families_bacnet_addr
         augmented_metadata["localnet"]["families"]["bacnet"]["network"] = families_bacnet_network
+
+        # add units by field from Carson model
+        for k, v in augmented_metadata["pointset"]["points"].items():
+            v["units"] = entity.get_units_by_field_name(k) or ""
 
         with open(metadata_path, "w", encoding='utf-8') as f:
             json.dump(augmented_metadata, f, indent=2)
