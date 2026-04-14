@@ -49,6 +49,9 @@ class MissingField(Field):
     def __init__(self, field_name):
         super().__init__(field_name)
 
+    def get_units(self):
+        return None
+
     def to_dict(self):
         return "MISSING"
 
@@ -62,6 +65,7 @@ class Entity():
         namespace=None,
         type_name=None,
         display_name=None,
+        fields = None,
         operation=None):
         self.guid = guid or str(uuid.uuid4())
         self.code = code
@@ -71,40 +75,92 @@ class Entity():
         self.namespace = namespace
         self.type_name = type_name
         self.display_name=display_name
-        self.fields = []
+        self.fields = self.add_fields_from_translation(fields) or []
         self.operation = None
 
     def add_fields_from_dict(self, fields: dict):
+        """
+        Input: loadsheet slice:
+        loadsheet_slice - slice of loadsheet containing fields of a single asset.
+        fields = loadsheet_slice.set_index("standardFieldName", drop=True)[["units", "deviceId", "objectType", 
+                                                                            "objectId", "isMissing"]].T.to_dict()
+        """
         try:
+            new_fields = []
+            seen_keys = set()
             for k, v in fields.items():
-                if k not in self.fields:
-                    obj_type = v.get("objectType")
+                if k in seen_keys:
+                    continue
 
-                    if obj_type in ("AI", "AO", "AV"):
-                        self.fields.append(
-                                UnitField(
-                                    field_name=k,
-                                    dbo_unit=helpers.map_units(k)
-                                )
+                obj_type = v.get("objectType")
+
+                if obj_type in ("AI", "AO", "AV"):
+                    new_fields.append(
+                            UnitField(
+                                field_name=k,
+                                dbo_unit=helpers.map_units(k)
                             )
-                    elif obj_type in ("BI", "BO", "BV", "MSV"):
-                        self.fields.append(
-                            StateField(
-                                    field_name=k,
-                                    dbo_states=helpers.map_states(k)
-                                )
+                        )
+                    seen_keys.add(k)
+                elif obj_type in ("BI", "BO", "BV", "MSV"):
+                    new_fields.append(
+                        StateField(
+                                field_name=k,
+                                dbo_states=helpers.map_states(k)
                             )
-                    elif v.get("isMissing")=="YES":
-                        self.fields.append(
-                            MissingField(field_name=k)
-                            )
-                    else:
-                        raise ValueError(f"[ERROR] {k}: unknown objectType: {obj_type}")
-                        continue
+                        )
+                    seen_keys.add(k)
+                elif v.get("isMissing")=="YES":
+                    new_fields.append(
+                        MissingField(field_name=k)
+                        )
+                    seen_keys.add(k)
+                else:
+                    raise ValueError(f"[ERROR] {k}: unknown objectType: {obj_type}")
+                    continue
+            return new_fields
 
         except Exception as e:
             print(f"[ERROR] Unable to add field: {k} due to: {e}")
-            return False
+            return []
+
+    def add_fields_from_translation(self, translation: dict):
+        """
+        Input: translation from carson entity config.
+        """
+        if not translation:
+            return []
+        try:
+            new_fields = []
+            seen_keys = set()
+            for k, v in translation.items():
+
+                if k in seen_keys:
+                    continue
+
+                field_name = k.split(".")[1] if "." in k else k
+
+                if "units" in v:
+                    new_fields.append(
+                            UnitField(
+                                field_name = field_name,
+                                dbo_unit=list(v["units"]["values"].keys())[0]
+                            )
+                        )
+                if "states" in v:
+                    new_fields.append(
+                        StateField(
+                                field_name=field_name,
+                                dbo_states=v["states"]
+                            )
+                        )
+                seen_keys.add(k)
+
+            return new_fields
+
+        except Exception as e:
+            print(f"[ERROR] Unable to add field: {k} due to: {e}")
+            return []
 
     def get_units_by_field_name(self, field_name):
         for field in self.fields:
@@ -141,6 +197,7 @@ class Site():
         if not isinstance(config, dict):
             raise TypeError("Config must be a dictionary.")
 
+        # site entity can be anywhere in the config so first pass to find site
         for key, val in config.items():
             if val.get("type")=='FACILITIES/BUILDING':
                 site = cls(
@@ -163,11 +220,12 @@ class Site():
                 namespace=val.get("type").split("/")[0] if val.get("type") else None,
                 type_name=val.get("type"),
                 display_name=val.get("display_name"),
+                fields=val.get("translation", {}),
                 operation=None
                 )
 
             site.entities.append(entity)
-            site._cloud_id_to_entity_map[val.get("cloud_device_id")] = entity
+            site._cloud_id_to_entity_map[str(val.get("cloud_device_id"))] = entity
 
         return site
 

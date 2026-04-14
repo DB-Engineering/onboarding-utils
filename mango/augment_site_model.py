@@ -7,13 +7,11 @@ from models import dbo_models, cloud_models
 
 
 def main():
-    loadsheet_path = input("Insert path to loadsheet (.xlsx): ")
     device_discovery_path = input("Insert path to device discovery (.csv): ")
     building_config_path = input("Insert path to building config: ")
     site_model_path = input("Insert path to site model: ")
 
-    if any([not loadsheet_path, 
-        not device_discovery_path, 
+    if any([not device_discovery_path, 
         not building_config_path, 
         not site_model_path]):
         raise ValueError("Necessary inputs are missing.")
@@ -21,17 +19,6 @@ def main():
     device_discovery = helpers.load_file(device_discovery_path)
     carson_config = dbo_models.Site.from_config(building_config_path)
     site_model = cloud_models.SiteModel.from_dir(site_model_path)
-
-    loadsheet = helpers.load_file(loadsheet_path)
-    loadsheet = loadsheet.loc[loadsheet["required"]=="YES"]
-    loadsheet["deviceIdStripped"] = loadsheet["deviceId"].str.replace("DEV:", "")
-
-    for entity in carson_config.entities:
-        loadsheet_slice = loadsheet.loc[loadsheet["assetName"]==entity.display_name, :]
-        fields = loadsheet_slice.set_index("standardFieldName", drop=True)[["units", "deviceId", "objectType", 
-                                                                            "objectId", "isMissing"]].T.to_dict()
-
-        entity.add_fields_from_dict(fields)
 
     if not os.path.exists(site_model_path):
         print(f"Directory not found: {site_model_path}")
@@ -45,7 +32,7 @@ def main():
     if not os.path.exists(site_model_path):
         raise ValueError(f"Directory not found: {site_model_path}")
 
-    for d in os.listdir(site_model_path)[:3]:
+    for d in os.listdir(site_model_path):
         item_path = os.path.join(site_model_path, d)
 
         # Skip files and specific exclusions
