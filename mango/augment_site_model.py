@@ -33,6 +33,7 @@ def main():
         raise ValueError(f"Directory not found: {site_model_path}")
 
     for d in os.listdir(site_model_path):
+
         item_path = os.path.join(site_model_path, d)
 
         # Skip files and specific exclusions
@@ -49,22 +50,19 @@ def main():
         device = cloud_models.Device.from_metadata(d, metadata)
 
         # ------ AUGMENTATION DATA ------
-        system_description = ", ".join([f"bacnet:{i}" for i in device.device_index])
-        system_tags = ["bacnet", "hvac", "serial"]
-
         discovery_match = device_discovery.loc[device_discovery["device_id"] == device.proxy_id, "device_num_id"]
 
-        cloud_num_id = None
-        system_name = None
-        physical_tag_asset_guid = None
+        if discovery_match.empty: continue
 
-        if not discovery_match.empty:
-            cloud_num_id = discovery_match.item()
-            entity = carson_config.get_entity_by_num_id(str(cloud_num_id))
-            if entity:
-                physical_tag_asset_guid = f"uuid://{entity.guid}"
-                system_name = entity.code
+        cloud_num_id = discovery_match.item()
+        entity = carson_config.get_entity_by_num_id(str(cloud_num_id))
 
+        if not entity: continue
+
+        physical_tag_asset_guid = f"uuid://{entity.guid}"
+        system_name = entity.code
+        system_description = ", ".join([f"bacnet:{i}" for i in device.device_index])
+        # system_tags = ["bacnet", "hvac", "serial"]
         physical_tag_asset_name = device.proxy_id
         families_bacnet_addr = ", ".join([i for i in device.device_index])
         families_bacnet_network = ", ".join(set([i[:5] if all([isinstance(i, str), len(i) > 6]) else i for i in device.device_index]))
@@ -74,10 +72,9 @@ def main():
 Augmenting {item_path} with following information:
     device: {device.proxy_id}
     system/description: {system_description}
-    system/tags: {system_tags}
     system/name: {system_name}
-    physical_tag/asset_name: {physical_tag_asset_name}
-    physical_tag/asset_guid: {physical_tag_asset_guid}
+    physical_tag/asset/name: {physical_tag_asset_name}
+    physical_tag/asset/guid: {physical_tag_asset_guid}
     cloud/num_id: {cloud_num_id}
     families/bacnet/addr: {families_bacnet_addr}
     families/bacnet/network: {families_bacnet_network}
@@ -91,7 +88,7 @@ Augmenting {item_path} with following information:
 
         augmented_metadata["system"]["name"] = system_name or ""
         augmented_metadata["system"]["description"] = system_description
-        augmented_metadata["system"]["tags"] = system_tags
+        # augmented_metadata["system"]["tags"] = system_tags
 
         if "physical_tag" not in augmented_metadata["system"]:
             augmented_metadata["system"]["physical_tag"] = {"asset": {}}
