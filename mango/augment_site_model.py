@@ -107,7 +107,7 @@ Augmenting {item_path} with following information:
         if "families" not in augmented_metadata["localnet"]:
             augmented_metadata["localnet"]["families"] = {}
         if "bacnet" not in augmented_metadata["localnet"]["families"]:
-            augmented_metadata["localnet"]["families"] = { "bacnet": {}}
+            augmented_metadata["localnet"]["families"]["bacnet"] = {}
 
         augmented_metadata["localnet"]["families"]["bacnet"]["addr"] = families_bacnet_addr
         augmented_metadata["localnet"]["families"]["bacnet"]["network"] = families_bacnet_network
