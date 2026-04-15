@@ -11,11 +11,12 @@ def export_building_config(building_code, outfile_path):
     # Parse building code
     # ----------------------------
     try:
-        _, city_code, building_code_part = building_code.split("-", 2)
+        country_code, city_code, building_code_part = building_code.split("-", 2)
     except ValueError:
-        print("❌ Invalid building code format. Expected: US-XXX-YYY")
+        print("❌ Invalid building code format. Expected: XX-YYY-ZZZ")
         sys.exit(1)
 
+    country_code = country_code.lower()
     city_code = city_code.lower()
     building_code_part = building_code_part.lower()
 
@@ -33,7 +34,7 @@ def export_building_config(building_code, outfile_path):
         "--deadline=60000",
         "--print_status_extensions",
         "--proto2",
-        f"name: 'projects/digitalbuildings/countries/us/cities/{city_code}/buildings/{building_code_part}', profile:'projects/digitalbuildings/profiles/MaintenanceOps'"
+        f"name: 'projects/digitalbuildings/countries/{country_code}/cities/{city_code}/buildings/{building_code_part}', profile:'projects/digitalbuildings/profiles/MaintenanceOps'"
     ]
 
     print("Running export building config command...")
@@ -70,12 +71,12 @@ def export_building_config(building_code, outfile_path):
         "--proto2",
         f"--outfile={outfile_path}",
         "--binary_output",
-        f"name: 'projects/digitalbuildings/countries/us/cities/{city_code}/buildings/{building_code_part}', profile:'projects/digitalbuildings/profiles/MaintenanceOps', operation_name: '{operation_name}'"
+        f"name: 'projects/digitalbuildings/countries/{country_code}/cities/{city_code}/buildings/{building_code_part}', profile:'projects/digitalbuildings/profiles/MaintenanceOps', operation_name: '{operation_name}'"
     ]
 
     time.sleep(10)
 
-    for attempt in range(1, 4):  # 3 tries max
+    for attempt in range(1, 8):  # 7 tries max
         print(f"Checking operation status (attempt {attempt})...")
         get_op_result = subprocess.run(get_op_args, capture_output=True, text=True)
 
@@ -99,10 +100,10 @@ def export_building_config(building_code, outfile_path):
             except Exception as e:
                 print(f"Warning: couldn't read outfile {outfile_path}: {e}")
 
-        if attempt < 3:
+        if attempt < 7:
             time.sleep(10)
 
-    print("❌ Export did not complete successfully (still running after 3 attempts).")
+    print("❌ Export did not complete successfully (still running after 7 attempts).")
     sys.exit(1)
 
 
@@ -122,7 +123,7 @@ def clean_export_file(outfile_path):
         with open(outfile_path, "w", encoding="utf-8") as fh:
             fh.write(cleaned_content)
 
-        print("✅ Building config successfully exported")
+        print("✅ Building config successfully refreshed")
 
     except Exception as e:
         print(f"⚠️ Failed to clean file {outfile_path}: {e}")
@@ -131,11 +132,8 @@ def clean_export_file(outfile_path):
 # ----------------------------
 # Main
 # ----------------------------
-def main():
-    building_code = input("Enter building code (format US-XXX-YYY): ").strip()
+if __name__ == "__main__":
+    building_code = input("Enter building code (format XX-YYY-ZZZ): ").strip()
     outfile_path = input("Enter absolute path for output full_building_config.yaml: ").strip()
 
     export_building_config(building_code, outfile_path)
-
-if __name__ == "__main__":
-    main()
