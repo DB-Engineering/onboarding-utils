@@ -17,7 +17,7 @@ setup(
     description="A collection of tools for device onboarding.",
     entry_points={
         'console_scripts': [
-            'onboard=cli:main',
+            'utils=cli:main',
         ],
     },
 )
