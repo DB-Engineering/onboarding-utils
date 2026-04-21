@@ -220,9 +220,9 @@ class Site():
                 namespace=val.get("type").split("/")[0] if val.get("type") else None,
                 type_name=val.get("type"),
                 display_name=val.get("display_name"),
-                fields=val.get("translation", {}),
                 operation=None
                 )
+            entity.add_fields_from_translation(val.get("translation", {}))
 
             site.entities.append(entity)
             site._cloud_id_to_entity_map[str(val.get("cloud_device_id"))] = entity
