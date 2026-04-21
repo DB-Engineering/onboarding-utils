@@ -75,7 +75,7 @@ class Entity():
         self.namespace = namespace
         self.type_name = type_name
         self.display_name=display_name
-        self.fields = self.add_fields_from_translation(fields) or []
+        self.fields = []
         self.operation = None
 
     def add_fields_from_dict(self, fields: dict):
@@ -118,7 +118,7 @@ class Entity():
                 else:
                     raise ValueError(f"[ERROR] {k}: unknown objectType: {obj_type}")
                     continue
-            return new_fields
+            self.fields = new_fields
 
         except Exception as e:
             print(f"[ERROR] Unable to add field: {k} due to: {e}")
@@ -156,7 +156,7 @@ class Entity():
                         )
                 seen_keys.add(k)
 
-            return new_fields
+            self.fields = new_fields
 
         except Exception as e:
             print(f"[ERROR] Unable to add field: {k} due to: {e}")

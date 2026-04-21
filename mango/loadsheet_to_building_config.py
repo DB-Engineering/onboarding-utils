@@ -71,7 +71,7 @@ def main():
 
         building_config.update(entity.to_dict())
 
-        helpers.write_yaml(output_path, building_config)
+    helpers.write_yaml(output_path, building_config)
 
     print(f"Building config successfully exported: {output_path}")
 

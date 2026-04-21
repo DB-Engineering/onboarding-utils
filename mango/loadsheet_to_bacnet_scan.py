@@ -52,6 +52,7 @@ def process_loadsheet(loadsheet: pd.DataFrame, mango_config: pd.DataFrame = None
                  'DHW': 'LTHW',
                  'HHWP': 'HWP',
                  'CWP': 'CDWP',
+                 'FC': 'FCU',
                  'VAVRH': 'VAV',
                  'VAVCO': 'VAV',
                  'EVAV': 'VAVE',
@@ -115,7 +116,8 @@ def process_bacnet_scan(bacnet_scan: pd.DataFrame, loadsheet: pd.DataFrame):
 
     # Handling objects missing in bacnet-scan
     missing_devices = [d for d in loadsheet_devices if d not in bacnet_scan]
-    print("\n [WARNING] Devices not found in bacnet scan, the tabs for these devices will be constructed from loadsheet:\n", ', '.join(missing_devices), "\n")
+    if missing_devices!=[]:
+        print("\n [WARNING] Devices not found in bacnet scan, the tabs for these devices will be constructed from loadsheet:\n", ', '.join(missing_devices), "\n")
 
     for sheet_name, df in bacnet_scan.items():
         if sheet_name == 'devices':
