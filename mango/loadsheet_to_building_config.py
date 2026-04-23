@@ -46,13 +46,17 @@ def main():
                                     v.get("deviceId"), 
                                     f"{v.get('objectType')}:{v.get('objectId')}"
                                     )
-            if not device: 
-                continue
+            if not device:
+                break
             elif not device.numeric_id:
                 device.numeric_id = device_discovery.loc[device_discovery.device_id==device.proxy_id, 'device_num_id'].item()
 
             if device.proxy_id and device.numeric_id:
                 break
+
+        if not device:
+            print(f"Asset information not found: {asset}, {code}")
+            continue
 
         if not (device.proxy_id and device.numeric_id):
             print(f"[ERROR] Could not find proxy_id and cloud_device_id for {asset}")
