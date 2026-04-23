@@ -55,7 +55,7 @@ def main():
                 break
 
         if not device:
-            print(f"Asset information not found: {asset}, {code}")
+            print(f"Asset information not found: {asset}, {code}. Skipping.")
             continue
 
         if not (device.proxy_id and device.numeric_id):
