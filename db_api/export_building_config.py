@@ -42,10 +42,26 @@ def export_building_config(building_code, outfile_path):
 
     if export_result.returncode != 0:
         print("❌ ExportBuildingConfig failed (return code != 0):")
-        print(export_result.stderr.strip())
-        if export_result.stdout:
-            print("Export stdout:\n", export_result.stdout)
+
+        combined_error = (
+            "=== ExportBuildingConfig FAILED ===\n\n"
+            f"Return code: {export_result.returncode}\n\n"
+            "STDOUT:\n"
+            f"{export_result.stdout or ''}\n\n"
+            "STDERR:\n"
+            f"{export_result.stderr or ''}\n"
+        )
+
+        # Write error to same outfile_path
+        try:
+            with open(outfile_path, "w", encoding="utf-8") as fh:
+                fh.write(combined_error)
+            print(f"📝 Error details written to: {outfile_path}")
+        except Exception as e:
+            print(f"⚠️ Failed to write error file: {e}")
+
         sys.exit(1)
+
 
     combined_out = (export_result.stdout or "") + "\n" + (export_result.stderr or "")
 

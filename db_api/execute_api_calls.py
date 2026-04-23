@@ -11,12 +11,13 @@ from . import export_building_config
 # ----------------------------
 def run_onboard_and_get_status(building_code, topology_file_path, result_file_path):
     try:
-        _, city_code, building_code_part = building_code.split("-", 2)
+        country_code, city_code, building_code_part = building_code.split("-", 2)
     except ValueError:
-        print("Invalid building code format. Expected: US-XXX-YYY")
+        print("Invalid building code format. Expected: XX-YYY-ZZZ")
         print("\a")  # Chime for failure
         return False
 
+    country_code = country_code.lower()
     city_code = city_code.lower()
     building_code_part = building_code_part.lower()
 
@@ -29,7 +30,7 @@ def run_onboard_and_get_status(building_code, topology_file_path, result_file_pa
         "google.cloud.digitalbuildings.v1alpha1.DigitalBuildingsService.OnboardBuilding",
         "--print_status_extensions",
         "--proto2",
-        f"name: 'projects/digitalbuildings/countries/us/cities/{city_code}/buildings/{building_code_part}', profile:'projects/digitalbuildings/profiles/MaintenanceOps'",
+        f"name: 'projects/digitalbuildings/countries/{country_code}/cities/{city_code}/buildings/{building_code_part}', profile:'projects/digitalbuildings/profiles/MaintenanceOps'",
         "--set_field",
         f"topology_file=readfile({topology_file_path})"
     ]
@@ -37,16 +38,47 @@ def run_onboard_and_get_status(building_code, topology_file_path, result_file_pa
     onboard_result = subprocess.run(onboard_args, capture_output=True, text=True)
     if onboard_result.returncode != 0:
         print("OnboardBuilding failed (return code != 0):")
-        print(onboard_result.stderr.strip())
-        if onboard_result.stdout:
-            print("Onboard stdout:\n", onboard_result.stdout)
+
+        combined_error = (
+            "=== OnboardBuilding FAILED ===\n\n"
+            f"Return code: {onboard_result.returncode}\n\n"
+            "STDOUT:\n"
+            f"{onboard_result.stdout or ''}\n\n"
+            "STDERR:\n"
+            f"{onboard_result.stderr or ''}\n"
+        )
+
+        # Write error to same result file path
+        try:
+            with open(result_file_path, "w", encoding="utf-8") as fh:
+                fh.write(combined_error)
+            print(f"📝 Error details written to: {result_file_path}")
+        except Exception as e:
+            print(f"⚠️ Failed to write error file: {e}")
+
         print("\a")
         return False
 
     onboard_combined = (onboard_result.stdout or "") + "\n" + (onboard_result.stderr or "")
     match = re.search(r'name:\s*["\']([^"\']+)["\']', onboard_combined)
     if not match:
-        print("Failed to extract operation name from OnboardBuilding output")
+        print("Onboarding command failed validation")
+        combined_error = (
+            "=== OnboardBuilding FAILED ===\n\n"
+            f"Return code: {onboard_result.returncode}\n\n"
+            "STDOUT:\n"
+            f"{onboard_result.stdout or ''}\n\n"
+            "STDERR:\n"
+            f"{onboard_result.stderr or ''}\n"
+        )
+
+        # Write error to same result file path
+        try:
+            with open(result_file_path, "w", encoding="utf-8") as fh:
+                fh.write(combined_error)
+        except Exception as e:
+            print(f"⚠️ Failed to write error file: {e}")
+
         print("\a")
         return False
 
@@ -61,7 +93,7 @@ def run_onboard_and_get_status(building_code, topology_file_path, result_file_pa
         "--proto2",
         f"--outfile={result_file_path}",
         "--binary_output",
-        f"name: 'projects/digitalbuildings/countries/us/cities/{city_code}/buildings/{building_code_part}', profile:'projects/digitalbuildings/profiles/MaintenanceOps', operation_name: '{operation_name}'"
+        f"name: 'projects/digitalbuildings/countries/{country_code}/cities/{city_code}/buildings/{building_code_part}', profile:'projects/digitalbuildings/profiles/MaintenanceOps', operation_name: '{operation_name}'"
     ]
 
     time.sleep(10)
@@ -156,7 +188,7 @@ def analyze_results(result_files):
 # Main script
 # ----------------------------
 def main():
-    building_code = input("Enter building code (format US-XXX-YYY): ").strip()
+    building_code = input("Enter building code (format XX-YYY-ZZZ): ").strip()
 
     print("\nChoose input mode:")
     print("1) Manually enter config file paths")

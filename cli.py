@@ -69,7 +69,8 @@ class Mapper(cmd.Cmd):
                 loadsheet:\t\t[required]\tfull valid loadsheet, format: [.xlsx]
                 site model:\t\t[required]\ta path to the clone of the site from Cloud Source Repo
                 device discovery:\t[required]\tquery result from https://plx.corp.google.com/scripts2/script_5e._f704e7_7fe1_486b_8d3c_f3a20190d94e [.csv]
-                output path:\t\t[required]
+                existing config path:\t[optional]\tpath to existing building config [.yaml]
+                output path:\t\t[required]\tpath to output file where building config updates will be saved [.yaml]
                 """)
         try:
             loadsheet_to_building_config.main()
