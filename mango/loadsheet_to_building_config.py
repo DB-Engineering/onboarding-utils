@@ -1,7 +1,6 @@
 from helpers import helpers
 from models import cloud_models, dbo_models
 import sys
-import yaml
 
 def main():
     loadsheet_path = input("Insert path to loadsheet (.xlsx): ")
