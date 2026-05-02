@@ -45,8 +45,6 @@ def main():
         else:
             type = f"HVAC/{type[0]}"
 
-        asset_loadsheet.set_index("standardFieldName", drop=True)[["deviceId", "objectType", "objectId", "isMissing"]].T.to_dict()
-
         fields = asset_loadsheet.set_index("standardFieldName", drop=True)[["units", "deviceId", "objectType", 
                                                                             "objectId", "isMissing"]].T.to_dict()
 
