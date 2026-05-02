@@ -72,10 +72,10 @@ class Mapper(cmd.Cmd):
                 existing config path:\t[optional]\tpath to existing building config [.yaml]
                 output path:\t\t[required]\tpath to output file where building config updates will be saved [.yaml]
                 """)
-        # try:
-        loadsheet_to_building_config.main()
-        # except Exception as e:
-        #     print(f"[ERROR]: Unable to create building config: {e}")
+        try:
+            loadsheet_to_building_config.main()
+        except Exception as e:
+            print(f"[ERROR]: Unable to create building config: {e}")
 
     def do_3(self, arg):
         """Export a new building config"""

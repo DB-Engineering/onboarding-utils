@@ -206,7 +206,7 @@ def map_units(fieldname):
     elif "concentration" in fieldname:
         return "parts-per-million"
     else:
-        print(f"Units not found for field: {fieldname}")
+        print(f"[WARNING] Units not found for field: {fieldname}")
         return "no-units"
 
 def map_states(field_name):
