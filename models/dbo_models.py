@@ -198,8 +198,7 @@ class Entity():
 
     def add_operation_flags(self, other):
         """
-        Compares self to another instance and returns a list of 
-        attribute names that differ between the two.
+        Compares self to another instance and sets appropriate operation and update_mask.
         """
         if not isinstance(other, self.__class__):
             raise ValueError("Comparison must be between instances of the same class.")
