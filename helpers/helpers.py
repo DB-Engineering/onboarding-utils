@@ -143,6 +143,10 @@ def map_units(fieldname):
         return "no-units"
     elif "percentage" in fieldname:
         return "percent"
+    elif "performanceratio" in fieldname:
+        return "kilowatts-per-ton"
+    elif "rotationalvelocity" in fieldname:
+        return "revolutions-per-minute"
     elif "temperature" in fieldname:
         return "degrees-fahrenheit"
     elif "frequency" in fieldname:
@@ -161,6 +165,10 @@ def map_units(fieldname):
         return "lux"
     elif "energy_accumulator" in fieldname:
         return "kilowatt-hours"
+    elif "electricconductivity" in fieldname:
+        return "microsiemens-per-centimeter"
+    elif "electricresistivity" in fieldname:
+        return "kiloohms-centimeter"
     elif "time_accumulator" in fieldname:
         return "hours"
     elif "load_power" in fieldname:
@@ -187,18 +195,19 @@ def map_units(fieldname):
         return "inches-of-water"
     elif "filter" in fieldname and "pressure" in fieldname:
         return "inches-of-water"
-    elif any(["refrigerant" in fieldname, "water" in fieldname, "differential" in fieldname]) and "pressure" in fieldname:
+    elif any(["refrigerant" in fieldname, "water" in fieldname,  "oil" in fieldname, "differential" in fieldname]) and "pressure" in fieldname:
         return "pounds-force-per-square-inch"
     elif "air" in fieldname and "flowrate" in fieldname:
         return "cubic-feet-per-minute"
-    elif "water" in fieldname and "flowrate" in fieldname:
+    elif any(["water" in fieldname, "min" in fieldname]) and "flowrate" in fieldname:
         return "us-gallons-per-minute"
     elif fieldname in ["flowrate_sensor", "flowrate_setpoint"]:
         return "us-gallons-per-minute"
     elif "concentration" in fieldname:
         return "parts-per-million"
     else:
-        return None
+        print(f"Units not found for field: {fieldname}")
+        return "no-units"
 
 def map_states(field_name):
     if any(["sensor" in field_name, 

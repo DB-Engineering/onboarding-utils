@@ -12,6 +12,11 @@ class Field(ABC):
     def get_units(self):
         pass
 
+    def __eq__(self, other):
+        if not isinstance(other, Field):
+            return False
+        return self.__dict__ == other.__dict__
+
 class UnitField(Field):
     def __init__(self, field_name, dbo_unit):
         super().__init__(field_name)
@@ -61,22 +66,45 @@ class Entity():
         code=None,
         etag=None,
         proxy_id=None,
-        cloud_device_id=None, 
-        namespace=None,
-        type_name=None,
+        cloud_device_id=None,
+        type=None,
         display_name=None,
-        fields = None,
+        translation = None,
         operation=None):
-        self.guid = guid or str(uuid.uuid4())
+        self._guid = guid or str(uuid.uuid4())
         self.code = code
-        self.etag = etag
+        self._etag = etag
         self.proxy_id = proxy_id
         self.cloud_device_id = cloud_device_id
-        self.namespace = namespace
-        self.type_name = type_name
+        self.type = type
         self.display_name=display_name
-        self.fields = []
-        self.operation = None
+        self.translation = []
+        self._operation = operation
+        self.update_mask = None
+
+    @property
+    def etag(self):
+        return self._etag
+
+    @etag.setter
+    def etag(self, value):
+        self._etag = value
+
+    @property
+    def guid(self):
+        return self._guid
+
+    @guid.setter
+    def guid(self, value):
+        self._guid = value
+
+    @property
+    def operation(self):
+        return self._operation
+
+    @operation.setter
+    def operation(self, value):
+        self._operation = value
 
     def add_fields_from_dict(self, fields: dict):
         """
@@ -118,7 +146,7 @@ class Entity():
                 else:
                     raise ValueError(f"[ERROR] {k}: unknown objectType: {obj_type}")
                     continue
-            self.fields = new_fields
+            self.translation = new_fields
 
         except Exception as e:
             print(f"[ERROR] Unable to add field: {k} due to: {e}")
@@ -156,41 +184,77 @@ class Entity():
                         )
                 seen_keys.add(k)
 
-            self.fields = new_fields
+            self.translation = new_fields
 
         except Exception as e:
             print(f"[ERROR] Unable to add field: {k} due to: {e}")
             return []
 
     def get_units_by_field_name(self, field_name):
-        for field in self.fields:
+        for field in self.translation:
             if field.dbo_field_name == field_name:
                 return field.get_units()
         return None
 
+    def add_operation_flags(self, other):
+        """
+        Compares self to another instance and returns a list of 
+        attribute names that differ between the two.
+        """
+        if not isinstance(other, self.__class__):
+            raise ValueError("Comparison must be between instances of the same class.")
+
+        mask_fields = [
+                "display_name",
+                "translation",
+                "type"
+            ]
+
+        update_mask = []
+
+        for field in mask_fields:
+            if getattr(self, field) != getattr(other, field):
+                update_mask.append(field)
+
+        if update_mask:
+            self._operation = "UPDATE"
+
+        self.update_mask = update_mask
+
     def to_dict(self):
-        return {
-                    str(self.guid): {
-                        "cloud_device_id": self.cloud_device_id,
-                        "etag": self.etag,
-                        "display_name": self.display_name,
-                        "code": self.code,
-                        "type": f"{self.namespace}/{self.type_name}",
-                        "operation": self.operation or "ADD",
-                        "translation": {field.dbo_field_name: field.to_dict() for field in self.fields}
-                    }
-                }
+
+        device_data = {
+                "cloud_device_id": self.cloud_device_id,
+                "display_name": self.display_name,
+                "code": self.code,
+                "type": self.type,
+                "translation": {field.dbo_field_name: field.to_dict() for field in self.translation}
+            }
+
+        if self.etag:
+                device_data["etag"] = self.etag
+
+        if self.operation:
+                device_data["operation"] = self.operation
+
+        if self.update_mask:
+                device_data["update_mask"] = self.update_mask
+
+        return {str(self._guid): device_data}
+
 
 class Site():
-    def __init__(self, name, guid):
-        self._name = name
+    def __init__(self, code, guid, type, etag=None):
+        self._code = code
         self.guid = guid
+        self.type = type
+        self.etag = etag
         self.entities = []
         self._cloud_id_to_entity_map = {}
 
     @property
-    def name(self):
-        return self._name
+    def code(self):
+        return self._code
 
     @classmethod
     def from_config(cls, config_path: str):
@@ -202,9 +266,12 @@ class Site():
         for key, val in config.items():
             if val.get("type")=='FACILITIES/BUILDING':
                 site = cls(
-                    name=val.get('code'),
-                    guid=key
+                    code=val.get("code"),
+                    guid=key,
+                    type=val.get("type"),
+                    etag=val.get("etag")
                     )
+                break
 
         for key, val in config.items():
             if key == "CONFIG_METADATA":
@@ -217,9 +284,8 @@ class Site():
                 code=val.get("code"),
                 etag=val.get("etag"),
                 proxy_id=None,
-                cloud_device_id=str(val.get("cloud_device_id")), 
-                namespace=val.get("type").split("/")[0] if val.get("type") else None,
-                type_name=val.get("type"),
+                cloud_device_id=str(val.get("cloud_device_id")),
+                type=val.get("type"),
                 display_name=val.get("display_name"),
                 operation=None
                 )
@@ -230,8 +296,28 @@ class Site():
 
         return site
 
+    def add_entity(self, new_entity: Entity):
+        self.entities.append(new_entity)
+
     def get_entity_by_num_id(self, num_id):
         return self._cloud_id_to_entity_map.get(str(num_id))
+
+    def to_dict(self):
+        output = {
+                "CONFIG_METADATA": {
+                    "operation": "UPDATE"
+                },
+                self.guid: {
+                    "code": self.code,
+                    "etag": self.etag,
+                    "type": self.type
+                }
+            }
+            
+        for entity in self.entities:
+            output.update(entity.to_dict())
+            
+        return output
 
 
 

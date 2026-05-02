@@ -94,7 +94,7 @@ Augmenting {item_path} with following information:
             augmented_metadata["system"]["physical_tag"] = {"asset": {}}
         
         augmented_metadata["system"]["physical_tag"]["asset"]["guid"] = physical_tag_asset_guid or ""
-        augmented_metadata["system"]["physical_tag"]["asset"]["site"] = carson_config.name
+        augmented_metadata["system"]["physical_tag"]["asset"]["site"] = carson_config.code
         augmented_metadata["system"]["physical_tag"]["asset"]["name"] = physical_tag_asset_name
 
         if "cloud" not in augmented_metadata:

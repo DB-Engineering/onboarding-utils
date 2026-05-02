@@ -56,7 +56,8 @@ def process_loadsheet(loadsheet: pd.DataFrame, mango_config: pd.DataFrame = None
                  'VAVRH': 'VAV',
                  'VAVCO': 'VAV',
                  'EVAV': 'VAVE',
-                 'Hood': 'FHEX'
+                 'Hood': 'FHEX',
+                 'PCW': 'CHW'
                 }
 
     print("Processing loadsheet...")
