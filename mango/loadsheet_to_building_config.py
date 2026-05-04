@@ -70,7 +70,7 @@ def main():
                     print(f"[WARNING] No numeric_id found for proxy_id: {device.proxy_id}")
                     device.numeric_id = None
                 elif len(device_match) > 1:
-                    print(f"[WARNING] Multiple IDs found for {device.proxy_id}, {', '.join(device_match.tolist())}. Using the first one.")
+                    print(f"[WARNING] Multiple numeric_id found for {device.proxy_id}, {', '.join(device_match.tolist())}. Using the first one.")
                     device.numeric_id = str(device_match.values[0])
                 else:
                     device.numeric_id = str(device_match.values[0])
@@ -93,10 +93,11 @@ def main():
                 guid=existing_entity.guid,
                 code=existing_entity.code,
                 etag=existing_entity.etag,
+                connections=existing_entity.connections,
                 proxy_id=device.proxy_id,
                 cloud_device_id=device.numeric_id,
                 type=type,
-                display_name=display_name
+                display_name=display_name,
             )
             new_entity.add_fields_from_dict(fields)
             new_entity.add_operation_flags(existing_entity)

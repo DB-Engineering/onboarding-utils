@@ -69,6 +69,7 @@ class Entity():
         cloud_device_id=None,
         type=None,
         display_name=None,
+        connections=None,
         translation = None,
         operation=None):
         self._guid = guid or str(uuid.uuid4())
@@ -78,6 +79,7 @@ class Entity():
         self.cloud_device_id = cloud_device_id
         self.type = type
         self.display_name=display_name
+        self.connections = connections
         self.translation = []
         self._operation = operation
         self.update_mask = None
@@ -232,6 +234,9 @@ class Entity():
 
         if self.etag:
                 device_data["etag"] = self.etag
+
+        if self.connections:
+                device_data["connections"] = self.connections
 
         if self.operation:
                 device_data["operation"] = self.operation
