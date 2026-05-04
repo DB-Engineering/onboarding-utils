@@ -37,7 +37,7 @@ def finalize_id(row):
 def process_mango_config(mango_config: pd.DataFrame):
     print("Processing mango config...")
     try:
-        mango_config = mango_config.loc[:, ['pointLocator/configurationDescription', 'tags/proxy_id']].dropna(how='any').drop_duplicates().reset_index(drop=True)
+        mango_config = mango_config.loc[:, ['pointLocator/configurationDescription', 'publishedPoints/0/deviceName']].dropna(how='any').drop_duplicates().reset_index(drop=True)
         mango_config['pointLocator/configurationDescription'] = 'device'+mango_config['pointLocator/configurationDescription']
         mango_config.columns = ['device_name', 'cloud_device_id']
 
@@ -61,50 +61,47 @@ def process_loadsheet(loadsheet: pd.DataFrame, mango_config: pd.DataFrame = None
                 }
 
     print("Processing loadsheet...")
-    try:
-        loadsheet = loadsheet.loc[(loadsheet['required']=='YES') & (loadsheet['isMissing']!='YES'), :]
-        loadsheet.loc[:, 'device_name'] = loadsheet['deviceId'].str.replace('DEV:', 'device')
-        loadsheet.loc[:, 'units'] = loadsheet['units'].apply(helpers.snake_to_camel)
 
-        # generate proxy id for each asset
+    loadsheet = loadsheet.loc[(loadsheet['required']=='YES') & (loadsheet['isMissing']!='YES'), :]
+    loadsheet.loc[:, 'device_name'] = loadsheet['deviceId'].str.replace('DEV:', 'device')
+    loadsheet.loc[:, 'units'] = loadsheet['units'].apply(helpers.snake_to_camel)
 
-        # simple enumeration by asset and general type
-        #loadsheet['proxy_id'] = loadsheet['generalType'] + "-" + loadsheet.groupby('generalType')['assetName'].transform(lambda x: pd.factorize(x)[0] + 1).astype(str)
+    # generate proxy id for each asset
 
-        # alternative enumeration preserving enumeration from asset name and applying additional suffix for possible duplicates
-        loadsheet.loc[:, 'assetName_bdns'] = loadsheet['assetName'].str.split(' ').str.get(0).apply(lambda x: PROXY_MAP.get(x) if PROXY_MAP.get(x) else x)
-        loadsheet.loc[:, 'cloud_device_id'] = loadsheet['assetName_bdns'] + "-" + loadsheet['assetName']\
-                                                                                                .str.replace('CO2', '')\
-                                                                                                .str.replace(r'[^\d]', '', regex=True)\
-                                                                                                .replace('', '1')
-        
-        loadsheet.loc[:, 'name_count'] = loadsheet.groupby('cloud_device_id')['assetName'].transform('nunique')
-        mask = loadsheet['name_count'] > 1
-        loadsheet.loc[mask, 'enum'] = loadsheet[mask].groupby(['cloud_device_id', 'assetName']).ngroup()
-        loadsheet.loc[:, 'suffix'] = loadsheet[mask].groupby('cloud_device_id')['assetName']\
-                                                .transform(lambda x: pd.factorize(x)[0] + 1)
-        loadsheet.loc[:, 'cloud_device_id'] = loadsheet.apply(finalize_id, axis=1)
-        loadsheet = loadsheet.drop(columns=['name_count', 'suffix', 'enum'], errors='ignore')
+    # simple enumeration by asset and general type
+    #loadsheet['proxy_id'] = loadsheet['generalType'] + "-" + loadsheet.groupby('generalType')['assetName'].transform(lambda x: pd.factorize(x)[0] + 1).astype(str)
 
-        # replace cloud_device_id with existing from mango config:
-        if mango_config:
-            for dev in loadsheet.device_name.unique():
-                df_slice = mango_config.loc[mango_config['device_name']==dev, :]
-                if df_slice.shape[0] == 0:
-                    print(f"No existing proxy_id for {dev}, applying new.")
-                elif df_slice.shape[0] > 1:
-                    print(f"{dev} contains multiple proxy_id: {', '.join(df_slice.unique().tolist())}, requires manual review. Skipping.")
-                else:
-                    loadsheet.loc[loadsheet['device_name']==dev, 'cloud_device_id'] = df_slice['cloud_device_id'].values[0]
+    # alternative enumeration preserving enumeration from asset name and applying additional suffix for possible duplicates
+    loadsheet.loc[:, 'assetName_bdns'] = loadsheet['assetName'].str.split(' ').str.get(0).apply(lambda x: PROXY_MAP.get(x) if PROXY_MAP.get(x) else x)
+    loadsheet.loc[:, 'cloud_device_id'] = loadsheet['assetName_bdns'] + "-" + loadsheet['assetName']\
+                                                                                            .str.replace('CO2', '')\
+                                                                                            .str.replace(r'[^\d]', '', regex=True)\
+                                                                                            .replace('', '1')
+    
+    loadsheet.loc[:, 'name_count'] = loadsheet.groupby('cloud_device_id')['assetName'].transform('nunique')
+    mask = loadsheet['name_count'] > 1
+    loadsheet.loc[mask, 'enum'] = loadsheet[mask].groupby(['cloud_device_id', 'assetName']).ngroup()
+    loadsheet.loc[:, 'suffix'] = loadsheet[mask].groupby('cloud_device_id')['assetName']\
+                                            .transform(lambda x: pd.factorize(x)[0] + 1)
+    loadsheet.loc[:, 'cloud_device_id'] = loadsheet.apply(finalize_id, axis=1)
+    loadsheet = loadsheet.drop(columns=['name_count', 'suffix', 'enum'], errors='ignore')
 
-        loadsheet['object'] = loadsheet['objectType'].map(helpers.OBJECT_ID_MAP_BMS_TO_CAMEL) + ":" + loadsheet['objectId'].astype(str)
-        loadsheet['cloud_point_name'] = loadsheet['standardFieldName']
-        print("Loadsheet processed successfully.")
+    # replace cloud_device_id with existing from mango config:
+    if mango_config is not None:
+        for dev in loadsheet.device_name.unique():
+            df_slice = mango_config.loc[mango_config['device_name']==dev, :]
+            if df_slice.shape[0] == 0:
+                print(f"No existing proxy_id for {dev}, applying new.")
+            elif df_slice.shape[0] > 1:
+                print(f"{dev} contains multiple proxy_id: {', '.join(df_slice.cloud_device_id.unique().tolist())}, requires manual review. Skipping.")
+            else:
+                loadsheet.loc[loadsheet['device_name']==dev, 'cloud_device_id'] = df_slice['cloud_device_id'].values[0]
 
-        return loadsheet
-    except Exception as e:
-        print(f"Unable to process loadsheet: {e}")
-        sys.exit()
+    loadsheet['object'] = loadsheet['objectType'].map(helpers.OBJECT_ID_MAP_BMS_TO_CAMEL) + ":" + loadsheet['objectId'].astype(str)
+    loadsheet['cloud_point_name'] = loadsheet['standardFieldName']
+    print("Loadsheet processed successfully.")
+
+    return loadsheet
 
 def process_bacnet_scan(bacnet_scan: pd.DataFrame, loadsheet: pd.DataFrame):
     print("Processing bacnet scan...")
@@ -213,7 +210,7 @@ def main():
             print(f"Unable to read mango config: {e}")
             sys.exit()
 
-        mango_config = process_mango_config(process_mango_config)
+        mango_config = process_mango_config(mango_config)
     else: mango_config = None
 
 
@@ -228,7 +225,7 @@ def main():
         print(f"Unable to read loadsheet: {e}")
         sys.exit()
 
-    if not mango_config:
+    if mango_config is None:
         loadsheet = process_loadsheet(loadsheet)
     else:
         loadsheet = process_loadsheet(loadsheet, mango_config)

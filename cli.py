@@ -58,10 +58,10 @@ class Mapper(cmd.Cmd):
                 bacnet-scan:\t\t[required]\toutput of a bacnet-scan tool, format: [.xlsx]
                 mango config file:\t[optional]\tneeded for identifying existing proxy_id
                 """)
-        try:
-            loadsheet_to_bacnet_scan.main()
-        except Exception as e:
-            print(f"[ERROR]: Unable to create building config: {e}")
+        # try:
+        loadsheet_to_bacnet_scan.main()
+        # except Exception as e:
+        #     print(f"[ERROR]: Unable to create building config: {e}")
 
     def do_2(self, arg):
         """Create a building config from loadsheet"""
