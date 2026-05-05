@@ -144,7 +144,7 @@ def map_units(fieldname):
     elif "percentage" in fieldname:
         return "percent"
     elif "performanceratio" in fieldname:
-        return "kilowatts-per-ton"
+        return "kilowatts-per-tons-of-refrigeration"
     elif "rotationalvelocity" in fieldname:
         return "revolutions-per-minute"
     elif "temperature" in fieldname:
@@ -156,8 +156,6 @@ def map_units(fieldname):
     elif "torque" in fieldname:
         return "newton-meters"
     elif "cooling_thermal_power" in fieldname:
-        return "btus-per-hour"
-    elif "cooling_thermal_power" in fieldname:
         return "tons-of-refrigeration"
     elif "power" in fieldname:
         return "kilowatts"
@@ -168,7 +166,7 @@ def map_units(fieldname):
     elif "electricconductivity" in fieldname:
         return "microsiemens-per-centimeter"
     elif "electricresistivity" in fieldname:
-        return "kiloohms-centimeter"
+        return "kiloohm-centimeters"
     elif "time_accumulator" in fieldname:
         return "hours"
     elif "load_power" in fieldname:
@@ -179,8 +177,6 @@ def map_units(fieldname):
         return "kilovolt-ampere-hours"
     elif "thermal_energy_accumulator" in fieldname:
         return "tons-of-refrigeration"
-    elif "thermalefficiency" in fieldname:
-        return "kilowatts-per-ton"
     elif "water_volume_accumulator" in fieldname:
         return "us-gallons"
     elif "heating_thermal_power" in fieldname:

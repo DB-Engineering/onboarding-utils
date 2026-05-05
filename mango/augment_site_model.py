@@ -62,10 +62,9 @@ def main():
         physical_tag_asset_guid = f"uuid://{entity.guid}"
         system_name = entity.code
         system_description = device.device_index[0] # ", ".join([f"bacnet:{i}" for i in device.device_index])
-        # system_tags = ["bacnet", "hvac", "serial"]
         physical_tag_asset_name = device.proxy_id
-        families_bacnet_addr = ", ".join([i for i in device.device_index])
-        families_bacnet_network = ", ".join(set([i[:5] if all([isinstance(i, str), len(i) > 6]) else i for i in device.device_index]))
+        families_bacnet_addr = device.device_index[0] #", ".join([i for i in device.device_index])
+        families_bacnet_network = families_bacnet_addr[:5] # ", ".join(set([i[:5] if all([isinstance(i, str), len(i) > 6]) else i for i in device.device_index]))
         # -------------------------------
 
         print(f"""
