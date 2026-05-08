@@ -110,6 +110,8 @@ def main():
                 system_tags.extend(["bacnet",
                                   "hvac",
                                   "serial"])
+            if len(device.device_index) > 1:
+                system_tags.append("virtual")
 
         # -------------------------------
 
@@ -135,7 +137,7 @@ Augmenting {item_path} with following information:
         if "system" not in augmented_metadata:
             augmented_metadata["system"] = {}
 
-        augmented_metadata["system"]["name"] = system_name or ""
+        augmented_metadata["system"]["name"] = system_name
         augmented_metadata["system"]["description"] = system_description
         augmented_metadata["system"]["serial_no"] = system_serial_no
         augmented_metadata["system"]["tags"] = system_tags

@@ -18,6 +18,37 @@ def parse_object_id(dp_string):
         # print(f"[WARNING] Unknown XID format: {dp_string}")
         return None, None
 
+class Gateway(self)
+    def __init__(self, proxy_id=None, numeric_id=None, proxy_ids=None, metadata=None):
+        self._proxy_id = proxy_id
+        self._numeric_id = numeric_id
+        self._proxy_ids = proxy_ids
+        self._metadata = metadata
+
+    @property
+    def proxy_id(self):
+        return self._proxy_id
+    
+    @proxy_id.setter
+    def proxy_id(self, value):
+        if not isinstance(value, str) and value is not None:
+            raise ValueError("proxy_id must be a string or None")
+        self._proxy_id = value
+
+    @property
+    def numeric_id(self):
+        return self._numeric_id
+    
+    @numeric_id.setter
+    def numeric_id(self, value):
+        if not isinstance(value, str) and value is not None:
+            raise ValueError("numeric_id must be a string or None")
+        self._numeric_id = value
+
+    def add_metadata(property: dict):
+        "Adds provided key-value pair to the device metadata."
+        pass
+
 class Device:
     def __init__(self, proxy_id=None, numeric_id=None, point_dict=None, device_list=None, metadata=None, guid=None):
         self._proxy_id = proxy_id
@@ -108,6 +139,8 @@ class Device:
 class SiteModel():
     def __init__(self):
         self.devices = {}
+        self.gateways = {}
+        self.controllers = {}
         self._point_to_device_map = {}
         self._duplicate_points = set()
 
@@ -115,6 +148,10 @@ class SiteModel():
         if device.proxy_id in self.devices:
             print(f"Device already added: {device.proxy_id}")
             return
+        if "CGW" in device.proxy_id:
+            self.gateways[device.proxy_id] = device
+        elif "DDC" in device.proxy_id:
+            self.controllers[device.proxy_id] = device
         self.devices[device.proxy_id] = device
 
         if not device.point_index:
