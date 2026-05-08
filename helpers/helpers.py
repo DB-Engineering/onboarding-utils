@@ -76,10 +76,10 @@ def load_file(file_path, **kwargs):
             print(f"Not a file: {file_path}")
             return None
         elif ext == ".csv":
-            return pd.read_csv(file_path, dtype=str, **kwargs)
+            return pd.read_csv(file_path, **kwargs)
             return None
         elif ext == ".xlsx":
-            return pd.read_excel(file_path, dtype=str, **kwargs)
+            return pd.read_excel(file_path, **kwargs)
         elif ext == ".json":
             with open(file_path, "r") as f:
                 file = json.load(f)

@@ -205,7 +205,7 @@ def main():
         mango_config_path = input("Insert path to mango config (.csv): ")
         #load mango config
         try:
-            mango_config = load_file(mango_config_path, dtype=str)
+            mango_config = helpers.load_file(mango_config_path, dtype=str)
         except Exception as e:
             print(f"Unable to read mango config: {e}")
             sys.exit()
@@ -220,7 +220,7 @@ def main():
 
     #load loadsheet
     try:
-        loadsheet = load_file(loadsheet_path, dtype=str)
+        loadsheet = helpers.load_file(loadsheet_path, dtype=str)
     except Exception as e:
         print(f"Unable to read loadsheet: {e}")
         sys.exit()
@@ -236,7 +236,7 @@ def main():
 
     # load bacnet scan
     try:
-        bacnet_scan = load_file(bscan_path, sheet_name=None, dtype=str)
+        bacnet_scan = helpers.load_file(bscan_path, sheet_name=None, dtype=str)
     except Exception as e:
         print(f"Unable to read bacnet scan: {e}")
         sys.exit()

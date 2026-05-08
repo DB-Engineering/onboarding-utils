@@ -134,7 +134,7 @@ class Mapper(cmd.Cmd):
         if line == '4': return self.do_4(None)
         if line == '5': return self.do_5(None)
         if line == '6': return self.do_6(None)
-        if line == '6': return self.do_7(None)
+        if line == '7': return self.do_7(None)
         if line == 'q': return self.do_q(None)
         print(f"*** Unknown syntax: {line}. Please choose 1-4 or q.")
 

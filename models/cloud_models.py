@@ -19,12 +19,13 @@ def parse_object_id(dp_string):
         return None, None
 
 class Device:
-    def __init__(self, proxy_id=None, numeric_id=None, point_dict=None, device_list=None, metadata=None):
+    def __init__(self, proxy_id=None, numeric_id=None, point_dict=None, device_list=None, metadata=None, guid=None):
         self._proxy_id = proxy_id
         self._numeric_id = numeric_id
         self._metadata = metadata
         self.point_index = point_dict or {}
         self._device_index = device_list or []
+        self.guid = guid
 
     def __repr__(self):
         return (f"proxy_id: {self._proxy_id}, numeric_id: {self._numeric_id}")
@@ -76,6 +77,9 @@ class Device:
         if not num_id:
             # print(f"[WARNING] Device numeric id not found for {name} in site model.")
             pass
+        guid = metadata_dict.get("system",{}).get("physical_tag",{}).get("asset",{}).get("uuid")
+        if guid:
+            guid = guid.replace("uuid://", "")
 
         points_found = {}
         devices_found = []
@@ -97,7 +101,8 @@ class Device:
                 numeric_id=num_id,
                 point_dict=points_found,
                 device_list=devices_found,
-                metadata=metadata_dict
+                metadata=metadata_dict,
+                guid=guid
                 )
 
 class SiteModel():

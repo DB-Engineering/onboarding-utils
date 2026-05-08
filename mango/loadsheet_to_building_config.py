@@ -103,6 +103,7 @@ def main():
             new_entity.add_operation_flags(existing_entity)
         else:
             new_entity = dbo_models.Entity(
+                guid=device.guid,
                 code=code,
                 proxy_id=device.proxy_id,
                 cloud_device_id=device.numeric_id,

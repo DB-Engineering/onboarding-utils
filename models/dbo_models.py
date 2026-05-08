@@ -219,8 +219,7 @@ class Entity():
 
         if update_mask:
             self._operation = "UPDATE"
-
-        self.update_mask = update_mask
+            self.update_mask = update_mask
 
     def to_dict(self):
 
