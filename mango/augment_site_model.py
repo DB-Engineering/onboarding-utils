@@ -101,7 +101,7 @@ def main():
                 system_tags.append("gas")
             if "PVI" in device.proxy_id:
                 pass
-            if "main" in entity.code.lower():
+            if "main" in entity.code.lower() and "main" not in system_tags:
                 system_tags.append("main")
         else:
             if all(["bacnet" not in system_tags,
