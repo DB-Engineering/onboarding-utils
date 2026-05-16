@@ -25,7 +25,7 @@ class Device:
         self._metadata = metadata
         self.point_index = point_dict or {}
         self._device_index = device_list or []
-        self.guid = guid
+        self._guid = guid
 
     def __repr__(self):
         return (f"proxy_id: {self._proxy_id}, numeric_id: {self._numeric_id}")
@@ -47,8 +47,18 @@ class Device:
     @numeric_id.setter
     def numeric_id(self, value):
         if not isinstance(value, str) and value is not None:
-            raise ValueError("numeric_id must be a string or None")
+            raise ValueError("guid must be a string or None")
         self._numeric_id = value
+
+    @property
+    def guid(self):
+        return self._guid
+    
+    @guid.setter
+    def guid(self, value):
+        if not isinstance(value, str) and value is not None:
+            raise ValueError("guid must be a string or None")
+        self._guid = value
 
     @property
     def device_index(self):
@@ -74,9 +84,6 @@ class Device:
     def from_metadata(cls, name, metadata_dict):
         """Creates a Device instance from a dictionary."""
         num_id = metadata_dict.get("cloud", {}).get("num_id")
-        if not num_id:
-            # print(f"[WARNING] Device numeric id not found for {name} in site model.")
-            pass
         guid = metadata_dict.get("system",{}).get("physical_tag",{}).get("asset",{}).get("uuid")
         if guid:
             guid = guid.replace("uuid://", "")

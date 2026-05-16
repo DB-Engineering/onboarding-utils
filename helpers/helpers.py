@@ -229,3 +229,14 @@ def map_states(field_name):
         return {"ON": "1.0", "OFF": "0.0"}
     else: 
         return None
+
+def get_common_prefix(input_strings: list):
+
+    output = os.path.commonprefix(input_strings)
+
+    if output.startswith('_'):
+        output = output[1:]
+    if output.endswith('_'):
+        output = output[:-1]
+
+    return output

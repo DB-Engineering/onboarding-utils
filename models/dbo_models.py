@@ -192,6 +192,29 @@ class Entity():
             print(f"[ERROR] Unable to add field: {k} due to: {e}")
             return []
 
+    def add_fields_from_metadata(self, points:dict = None):
+        """
+        Input: metadata["pointset"]["points"] from site model device metadata.
+        Assumes that all fields are UnitField type, because Site Model doesn't make that distinction.
+        Primary use case: generation of Carson meter configs from Site Model.
+        """
+        if points is None:
+            self.translation = []
+
+        else:
+            translation_fields = []
+            for k, v in points.items():
+                if k.lower() == 'ping':
+                    continue
+
+                translation_fields.append(
+                                UnitField(
+                                    field_name = k,
+                                    dbo_unit=v["units"]
+                                )
+                            )
+            self.translation = translation_fields
+
     def get_units_by_field_name(self, field_name):
         for field in self.translation:
             if field.dbo_field_name == field_name:
