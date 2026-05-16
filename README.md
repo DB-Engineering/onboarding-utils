@@ -31,6 +31,6 @@ pip install -e .
 ### 4. Run command to start:
 
 ```bash
-onboard
+utils
 ```
 ### 5. Follow command line prompts.
