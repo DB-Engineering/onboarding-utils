@@ -94,11 +94,11 @@ def main():
         # Interactive type matching
         fields = set(points.keys())
         suggested_type, pre_add_fields = type_matcher.run_type_matcher(fields, meter_type)
-        type_name = "METER/"+type_matcher.get_type_name(suggestion=suggested_type)
+        type_name = "METERS/"+type_matcher.get_type_name(suggestion=suggested_type)
         print(f"Final meter type: {type_name}.")
         type_propmt = input("Press Enter to continue with this type or insert your own type (without a namespace):")
         if type_propmt != "":
-            type_name = "METER/"+type_propmt
+            type_name = "METERS/"+type_propmt
         # --------------------------------
 
         existing_entity = building_config.get_entity_by_num_id(device.numeric_id)
