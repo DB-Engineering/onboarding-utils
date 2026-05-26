@@ -1,7 +1,7 @@
 import os
 import cmd
 import sys
-from mango import loadsheet_to_bacnet_scan, loadsheet_to_building_config, combine_bacnet_scans, augment_site_model, meter_configs_from_site_model
+from mango import loadsheet_to_bacnet_scan, loadsheet_to_building_config, combine_bacnet_scans, augment_site_model, meter_configs_from_site_model, loadsheet_to_bambi
 from db_api import execute_api_calls, split_config, export_building_config
 
 class Mapper(cmd.Cmd):
@@ -44,12 +44,13 @@ class Mapper(cmd.Cmd):
         print('\nWhat would you like to do?')
         print('1: Populate bacnet-scan from loadsheet')
         print('2: Create a building config from loadsheet')
-        print('3: Create a meter configs from site model')
-        print('4: Export a new building config')
-        print('5: Split a building config')
-        print('6: Run an onboarding operation')
-        print('7: Combine multiple bacnet-scans into one')
-        print('8: Augment Site Model')
+        print('3: Fill out a BAMBI sheet from loadsheet')
+        print('4: Create a meter configs from site model')
+        print('5: Export a new building config')
+        print('6: Split a building config')
+        print('7: Run an onboarding operation')
+        print('8: Combine multiple bacnet-scans into one')
+        print('9: Augment Site Model')
         print('q: quit\n')
 
     def do_1(self, arg):
@@ -79,6 +80,24 @@ class Mapper(cmd.Cmd):
             print(f"[ERROR]: Unable to create building config: {e}")
 
     def do_3(self, arg):
+        """Create a building config from loadsheet"""
+        print("""The following inputs will be needed:
+                loadsheet [.xlsx]:\t\t\t[required]\tfull valid loadsheet, format
+                BAMBI [.xlsx]:\t\t\t\t[required]\tfreshly generated BAMBI sheet for the given building
+                assetName <-> proxyID map [.xlsx]:\t[required]\ta map between the assetNames and proxyIDs for every device in the given building\n 
+                \t\t\t\t\t\t\tMap example:\n
+                \t\t\t\t\t\t\tasset_name          proxy_id
+                \t\t\t\t\t\t\tVAVCO 1-1-50 CO2    VAV-1150
+                \t\t\t\t\t\t\tVAVCO 1-1-51 CO2    VAV-1151
+                \t\t\t\t\t\t\tVAVCO 1-1-52        VAV-1152
+                \t\t\t\t\t\t\tVAVCO 1-1-53        VAV-1153
+                """)
+        try:
+            loadsheet_to_bambi.main()
+        except Exception as e:
+            print(f"[ERROR]: Unable to fill out BAMBI sheet: {e}")
+
+    def do_4(self, arg):
         """Generate meter onboarding configs from site model"""
         print("""The following inputs will be needed:
                 site model:\t\t[required]\ta path to the clone of the site from Cloud Source Repo
@@ -91,35 +110,35 @@ class Mapper(cmd.Cmd):
         except Exception as e:
             print(f"[ERROR]: Unable to generate meter configs: {e}")
 
-    def do_4(self, arg):
+    def do_5(self, arg):
         """Export a new building config"""
         try:
             export_building_config.main()
         except Exception as e:
             print(f"[ERROR]: Unable to export building config: {e}")
 
-    def do_5(self, arg):
+    def do_6(self, arg):
         """Split a building config"""
         try:
             split_config.main()
         except Exception as e:
             print(f"[ERROR]: Unable to split config: {e}")
 
-    def do_6(self, arg):
+    def do_7(self, arg):
         """Export a new building config"""
         try:
             execute_api_calls.main() 
         except Exception as e:
             print(f"[ERROR]: Unable to run onboarding operation: {e}")
 
-    def do_7(self, arg):
+    def do_8(self, arg):
         """Combine multiple bacnet-scans into one"""
         try:
             combine_bacnet_scans.main() 
         except Exception as e:
             print(f"[ERROR]: Unable to combine bacnet-scans: {e}")
 
-    def do_8(self, arg):
+    def do_9(self, arg):
         """Augment Site Model with information from building config"""
         print("""The following inputs will be needed:
                 device discovery:\t[required]\tquery result from https://plx.corp.google.com/scripts2/script_5e._f704e7_7fe1_486b_8d3c_f3a20190d94e [.csv]
@@ -150,8 +169,9 @@ class Mapper(cmd.Cmd):
         if line == '6': return self.do_6(None)
         if line == '7': return self.do_7(None)
         if line == '8': return self.do_8(None)
+        if line == '9': return self.do_9(None)
         if line == 'q': return self.do_q(None)
-        print(f"*** Unknown syntax: {line}. Please choose 1-4 or q.")
+        print(f"*** Unknown syntax: {line}. Please choose 1-9 or q.")
 
 def main():
     try:
