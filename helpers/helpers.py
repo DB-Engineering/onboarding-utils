@@ -120,7 +120,9 @@ def write_yaml(file_path, data):
             yaml.safe_dump({key: value}, f, 
                            default_flow_style=False, 
                            sort_keys=False, 
-                           allow_unicode=True)
+                           allow_unicode=True,
+                           width=float('inf')
+                           )
             
             # If it's not the last entry, add a blank line
             if i < len(items) - 1:

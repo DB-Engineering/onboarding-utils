@@ -5,7 +5,7 @@ import sys
 def main():
     loadsheet_path = input("Insert path to loadsheet (.xlsx): ")
     device_discovery_path = input("Insert path to device discovery (.csv): ")
-    existing_building_config_path = input("Insert path for existing building config file (.yaml):")
+    existing_building_config_path = input("Insert path for existing building config file (.yaml): ")
     site_model_path = input("Insert path to site model: ")
     output_path = input("Insert path for output building config file (.yaml): ")
 
@@ -28,6 +28,7 @@ def main():
 
     loadsheet = helpers.load_file(loadsheet_path)
     loadsheet = loadsheet.loc[loadsheet["required"]=="YES"]
+    loadsheet["objectId"] = loadsheet.loc[loadsheet["objectId"].isna()==False, "objectId"].astype(int).astype(str)
 
     assets = loadsheet["assetName"].unique().tolist()
 
@@ -50,6 +51,7 @@ def main():
 
         # get proxy_id and cloud_device_id by objectId
         for k, v in fields.items():
+
             if v.get("isMissing") == "YES": continue
 
             object_type = v.get('objectType')
