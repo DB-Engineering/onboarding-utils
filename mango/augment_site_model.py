@@ -1,6 +1,7 @@
 import os
 import json
 import copy
+import uuid
 
 from helpers import helpers
 from models import dbo_models, cloud_models
@@ -10,19 +11,22 @@ def main():
     device_discovery_path = input("Insert path to device discovery (.csv): ")
     building_config_path = input("Insert path to building config: ")
     site_model_path = input("Insert path to site model: ")
-    bacnet_scan_path = input("Insert path to bacnet scan (.xlsx): ")
+    bacnet_scan_path = input("[Optional] Insert path to bacnet scan (.xlsx) or press Enter to continue: ")
 
     if any([not device_discovery_path, 
         not building_config_path, 
-        not site_model_path,
-        not bacnet_scan_path]):
+        not site_model_path]):
         raise ValueError("Necessary inputs are missing.")
 
     device_discovery = helpers.load_file(device_discovery_path)
     carson_config = dbo_models.Site.from_config(building_config_path)
     site_model = cloud_models.SiteModel.from_dir(site_model_path)
-    bacnet_scan = helpers.load_file(bacnet_scan_path, sheet_name='devices')
-    bacnet_scan = bacnet_scan[["device_name", "device_model", "device_serial_number"]].drop_duplicates().set_index("device_name").fillna("").T.to_dict()
+
+    if bacnet_scan_path:
+        bacnet_scan = helpers.load_file(bacnet_scan_path, sheet_name='devices')
+        bacnet_scan = bacnet_scan[["device_name", "device_model", "device_serial_number"]].drop_duplicates().set_index("device_name").fillna("").T.to_dict()
+    else:
+        bacnet_scan = {}
 
     if "udmi" not in site_model_path:
         site_model_path = os.path.join(site_model_path, "udmi")
@@ -35,7 +39,7 @@ def main():
         print(item_path)
 
         # Skip files and specific exclusions
-        if os.path.isfile(item_path) or any(x in d for x in ["bacnet", "CGW"]):
+        if os.path.isfile(item_path) or "bacnet" in d:
             continue
 
         metadata_path = os.path.join(item_path, "metadata.json")
@@ -44,6 +48,7 @@ def main():
             continue
 
         metadata = helpers.load_file(metadata_path)
+
         
         device = cloud_models.Device.from_metadata(d, metadata)
 
@@ -55,17 +60,51 @@ def main():
             continue
 
         cloud_num_id = discovery_match.item()
+
+
+        if "CGW" in d: # gateways have their own metadata and are not in carson config
+            augmented_metadata = copy.deepcopy(device.metadata)
+
+            if "cloud" not in augmented_metadata:
+                augmented_metadata["cloud"] = {}
+
+            augmented_metadata["cloud"]["resource_type"] = "GATEWAY"
+            augmented_metadata["cloud"]["num_id"] = cloud_num_id
+
+            if "system" not in augmented_metadata:
+                augmented_metadata["system"] = {}
+            augmented_metadata["system"]["tags"] =  [
+                                                      "mango",
+                                                      "virtual",
+                                                      "gateway"
+                                                    ]
+
+            if "physical_tag" not in augmented_metadata["system"]:
+                augmented_metadata["system"]["physical_tag"] = {"asset": {}}
+
+            augmented_metadata["system"]["node_type"] = "virtual_device"
+            if "guid" not in augmented_metadata["system"]["physical_tag"]["asset"]:
+                augmented_metadata["system"]["physical_tag"]["asset"]["guid"] = f"uuid://{str(uuid.uuid4())}"
+            augmented_metadata["system"]["physical_tag"]["asset"]["site"] = carson_config.code
+            augmented_metadata["system"]["physical_tag"]["asset"]["name"] = augmented_metadata.get("localnet", {}).get("iot", {}).get("addr") or d
+
+            with open(metadata_path, "w", encoding='utf-8') as f:
+                json.dump(augmented_metadata, f, indent=2)
+
+            continue
+
+
         entity = carson_config.get_entity_by_num_id(str(cloud_num_id))
 
         if not entity: 
             print(f"Entity wasn't found: {item_path}, cloud num_id: {cloud_num_id}. Skipping.")
             continue
 
+        
         is_meter = True if "meter" in entity.code or "utility" in entity.code else False
 
         physical_tag_asset_guid = f"uuid://{entity.guid}"
         physical_tag_asset_name = device.proxy_id
-        
 
         if is_meter:
             families_bacnet_addr = ""
