@@ -33,7 +33,7 @@ TABS_TO_VALIDATE = [
     TAB_CLOUD,
     TAB_GATEWAY,
     TAB_LOCALNET,
-    # TAB_POINTSET,
+    TAB_POINTSET,
 ]
 
 def main():
@@ -111,13 +111,6 @@ def normalize_device_key(asset_name: str):
     return str(asset_name).strip().upper() if isinstance(asset_name, str) else None
 
 
-def build_lookup(df, col="device_id"):
-    if col not in df.columns:
-        return set()
-
-    return set(df[col].dropna().astype(str))
-
-
 def map_object_type(obj_type):
     if pd.isna(obj_type):
         return None
@@ -178,21 +171,10 @@ def process_excel(bambi_file, loadsheet_file, mapping_file):
     site_name = loadsheet.at[0, "building"]
 
     # ----------------------------
-    # DEVICE LOOKUPS
+    # BUILD DEVICE LOOKUP
     # ----------------------------
 
-    device_sets = {}
-
-    for tab in TABS_TO_VALIDATE:
-        device_sets[tab] = build_lookup(
-            sheets.get(tab, pd.DataFrame())
-        )
-
-    # ----------------------------
-    # BUILD DEVICE REGISTRY
-    # ----------------------------
-
-    device_registry = {}
+    device_lookup = {}
     assets = loadsheet["assetName"].unique().tolist()
 
     for asset in assets:
@@ -221,7 +203,7 @@ def process_excel(bambi_file, loadsheet_file, mapping_file):
             )
         device.add_points_from_dict(fields)
 
-        device_registry[device_id] = device
+        device_lookup[device_id] = device
 
     # ----------------------------
     # BUILDING SYSTEM, CLOUD, GATEWAY, LOCALNET, POINTSET TABS
@@ -232,7 +214,7 @@ def process_excel(bambi_file, loadsheet_file, mapping_file):
     updated_localnet = sheets.get(TAB_LOCALNET, pd.DataFrame()).copy()
     updated_pointset = sheets.get(TAB_POINTSET, pd.DataFrame()).copy()
 
-    for device_id, device_obj in sorted(device_registry.items()):
+    for device_id, device_obj in sorted(device_lookup.items()):
         if device_id not in updated_system['device_id'].to_list():
             new_row = pd.DataFrame([{"device_id": device_id,
                                      "name": device_obj.system_name,
@@ -282,7 +264,7 @@ def process_excel(bambi_file, loadsheet_file, mapping_file):
 
     if "CGW-1" in updated_gateway["device_id"].to_list():
         updated_gateway["proxy_ids"] = updated_gateway["proxy_ids"].fillna("").astype(str)
-        updated_gateway.loc[updated_gateway["device_id"]=="CGW-1", ["proxy_ids", "target.family"]] = [", ".join(sorted(device_registry.keys())), 
+        updated_gateway.loc[updated_gateway["device_id"]=="CGW-1", ["proxy_ids", "target.family"]] = [", ".join(sorted(device_lookup.keys())), 
                                                                                                       "vendor"]
 
     # ----------------------------
