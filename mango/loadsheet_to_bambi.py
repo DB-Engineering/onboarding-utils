@@ -7,6 +7,8 @@ from collections import defaultdict, Counter
 # ----------------------------
 # CONFIG
 # ----------------------------
+REQUIRED_COLS = ["location", "controlProgram", "name", "type", "deviceId", "objectType", "objectId", "objectName", "path", "required", 
+                 "units", "manuallyMapped", "isMissing", "building", "generalType", "typeName", "assetName", "standardFieldName"]
 
 TAB_SYSTEM = "system"
 TAB_CLOUD = "cloud"
@@ -141,13 +143,17 @@ def clean_object_id(value):
     return str(value)
 
 
-def build_ref(device_raw_id, obj_type, object_id):
-    if not obj_type or not object_id:
+def build_ref(device_raw_id, obj_type_raw, object_id, new_driver=False):
+    if not obj_type_raw or not object_id:
         return None
 
     device_numeric = str(device_raw_id).replace("DEV:", "").strip()
 
-    return f"DP_{device_numeric}_{obj_type}_{object_id}"
+    if new_driver==True:
+        return f"bacnet://{device_numeric}/{obj_type_raw}/{object_id}"
+    else:
+        obj_type = map_object_type(obj_type_raw)
+        return f"DP_{device_numeric}_{obj_type}_{object_id}"
 
 
 # ----------------------------
@@ -160,8 +166,11 @@ def process_excel(bambi_file, loadsheet_file, mapping_file):
     sheets = {name: xls.parse(name) for name in xls.sheet_names}
 
     loadsheet = pd.read_excel(loadsheet_file)
+    loadsheet = loadsheet.loc[(loadsheet['required']=="YES") & (loadsheet['isMissing']!="YES"), :]
 
     proxy_map = load_proxy_map(mapping_file)
+
+    prompt_driver_version = input("Are you populating BAMBI sheet for the driver version >=5.3.1? Y/N: ")
 
     # ----------------------------
     # DEVICE LOOKUPS
@@ -283,20 +292,26 @@ def process_excel(bambi_file, loadsheet_file, mapping_file):
         if pd.isna(standard_field) or pd.isna(object_type_raw):
             continue
 
-        obj_type = map_object_type(object_type_raw)
-
-        if not obj_type:
+        if not object_type_raw:
             continue
 
         template = f"{device_id}_template"
 
         point_name = standard_field
 
-        ref = build_ref(
-            device_raw_id,
-            obj_type,
-            object_id
-        )
+        if prompt_driver_version.lower()=="y":
+            ref = build_ref(
+                device_raw_id,
+                object_type_raw,
+                object_id,
+                new_driver=True
+            )
+        else:
+            ref = build_ref(
+                device_raw_id,
+                object_type_raw,
+                object_id
+            )
 
         if not ref:
             continue
