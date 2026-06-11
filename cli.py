@@ -42,10 +42,10 @@ class Mapper(cmd.Cmd):
     def do_menu(self, arg):
         """Show the numbered selection menu"""
         print('\nWhat would you like to do?')
-        print('1: Populate bacnet-scan from loadsheet')
+        print('1: Populate a bacnet-scan from loadsheet')
         print('2: Create a building config from loadsheet')
-        print('3: Fill out a BAMBI sheet from loadsheet')
-        print('4: Create a meter configs from site model')
+        print('3: Populate BAMBI sheet from loadsheet')
+        print('4: Create meter configs from site model')
         print('5: Export a new building config')
         print('6: Split a building config')
         print('7: Run an onboarding operation')

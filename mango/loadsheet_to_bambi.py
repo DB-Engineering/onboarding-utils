@@ -4,6 +4,8 @@ import os
 import warnings  # <--- Add this
 from collections import defaultdict, Counter
 
+from models import bambi_models
+
 # ----------------------------
 # CONFIG
 # ----------------------------
@@ -31,7 +33,7 @@ TABS_TO_VALIDATE = [
     TAB_CLOUD,
     TAB_GATEWAY,
     TAB_LOCALNET,
-    TAB_POINTSET,
+    # TAB_POINTSET,
 ]
 
 def main():
@@ -167,10 +169,13 @@ def process_excel(bambi_file, loadsheet_file, mapping_file):
 
     loadsheet = pd.read_excel(loadsheet_file)
     loadsheet = loadsheet.loc[(loadsheet['required']=="YES") & (loadsheet['isMissing']!="YES"), REQUIRED_COLS]
+    loadsheet["objectId"] = loadsheet.loc[loadsheet["objectId"].isna()==False, "objectId"].astype(int).astype(str)
 
     proxy_map = load_proxy_map(mapping_file)
 
     prompt_driver_version = input("Are you populating BAMBI sheet for the driver version >=5.3.1? Y/N: ")
+
+    site_name = loadsheet.at[0, "building"]
 
     # ----------------------------
     # DEVICE LOOKUPS
@@ -184,18 +189,18 @@ def process_excel(bambi_file, loadsheet_file, mapping_file):
         )
 
     # ----------------------------
-    # GROUP LOADSHEET BY DEVICE
+    # BUILD DEVICE REGISTRY
     # ----------------------------
 
-    grouped = defaultdict(list)
+    device_registry = {}
+    assets = loadsheet["assetName"].unique().tolist()
 
-    for _, row in loadsheet.iterrows():
-
-        asset = normalize_device_key(row.get("assetName"))
-
+    for asset in assets:
+        asset_loadsheet = loadsheet.loc[loadsheet["assetName"]==asset, ["controlProgram", "typeName", "assetName", "standardFieldName", 
+                                                                        "units", "deviceId", "objectType", "objectId", "isMissing"]]
         try:
             device_id = get_proxy_id(
-                row.get("assetName"),
+                asset,
                 proxy_map
             )
 
@@ -203,43 +208,85 @@ def process_excel(bambi_file, loadsheet_file, mapping_file):
             print(f"Skipping grouping row due to error: {e}")
             continue
 
-        if not asset or not device_id:
-            continue
+        code = ", ".join(sorted(asset_loadsheet.controlProgram.dropna().unique().tolist()))
+        bacnet_addr = sorted(asset_loadsheet.deviceId.dropna().unique().tolist())[0] # only one device is allowed for localnet_families_bacnet_addr
 
-        grouped[device_id].append(row)
+        fields = asset_loadsheet.set_index("standardFieldName", drop=True)[["units", "deviceId", "objectType", 
+                                                                            "objectId", "isMissing"]].T.to_dict()
 
-    # ----------------------------
-    # VALIDATION
-    # ----------------------------
+        device = bambi_models.BAMBIDevice(
+            proxy_id=device_id,
+            system_name=code,
+            bacnet_id=bacnet_addr
+            )
+        device.add_points_from_dict(fields)
 
-    print("\nDEVICE VALIDATION")
-    print("------------------")
-
-    summary = Counter()
-
-    for device_id in sorted(grouped.keys()):
-
-        missing = []
-
-        for tab in TABS_TO_VALIDATE:
-
-            if device_id not in device_sets[tab]:
-                missing.append(tab)
-
-        if missing:
-
-            print(f"{device_id}: missing in {', '.join(missing)}")
-
-            for m in missing:
-                summary[m] += 1
-
-        else:
-
-            print(f"{device_id}: OK")
-            summary["OK"] += 1
+        device_registry[device_id] = device
 
     # ----------------------------
-    # POINT BUILDING
+    # BUILDING SYSTEM, CLOUD, GATEWAY, LOCALNET, POINTSET TABS
+    # ----------------------------
+    updated_system = sheets.get(TAB_SYSTEM, pd.DataFrame()).copy()
+    updated_cloud = sheets.get(TAB_CLOUD, pd.DataFrame()).copy()
+    updated_gateway = sheets.get(TAB_GATEWAY, pd.DataFrame()).copy()
+    updated_localnet = sheets.get(TAB_LOCALNET, pd.DataFrame()).copy()
+    updated_pointset = sheets.get(TAB_POINTSET, pd.DataFrame()).copy()
+
+    for device_id, device_obj in sorted(device_registry.items()):
+        if device_id not in updated_system['device_id'].to_list():
+            new_row = pd.DataFrame([{"device_id": device_id,
+                                     "name": device_obj.system_name,
+                                     "description": f"bacnet-{device_obj.bacnet_id}",
+                                     "location.site": site_name
+                                     }])
+            updated_system = pd.concat([updated_system, new_row], ignore_index=True)
+
+        if device_id not in updated_cloud['device_id'].to_list():
+            new_row = pd.DataFrame([{"device_id": device_id,
+                                     "resource_type": "PROXIED"
+                                     }])
+            updated_cloud = pd.concat([updated_cloud, new_row], ignore_index=True)
+
+        if device_id not in updated_gateway['device_id'].to_list():
+            new_row = pd.DataFrame([{"device_id": device_id,
+                                     "gateway_id": "CGW-1",
+                                     "target.family": "vendor"
+                                     }])
+            updated_gateway = pd.concat([updated_gateway, new_row], ignore_index=True)
+
+        if device_id not in updated_localnet['device_id'].to_list():
+            new_row = pd.DataFrame([{"device_id": device_id,
+                                     "parent.target": "CGW-1",
+                                     "parent.family": "bacnet",
+                                     "families.bacnet.addr": device_obj.bacnet_id,
+                                     "families.bacnet.network": device_obj.bacnet_network,
+                                     "families.iot.addr": device_id
+                                     }])
+            updated_localnet = pd.concat([updated_localnet, new_row], ignore_index=True)
+
+        if device_id not in updated_pointset['device_id'].to_list():
+            new_row = pd.DataFrame([{"device_id": device_id,
+                                     "points_template_name": f"{device_id}_template"
+                                     }])
+            updated_pointset = pd.concat([updated_pointset, new_row], ignore_index=True)
+
+    # Add information to gateway device
+    # Assuming that bacnet gateway already exists in initial site model and that its name is CGW-1
+    if "CGW-1" in updated_system["device_id"].to_list():
+        updated_system.loc[updated_system["device_id"]=="CGW-1", ["description", "node_type", "location.site"]] = ["bacnet communication gateway", 
+                                                                                                                   "virtual_device", 
+                                                                                                                   site_name]
+
+    if "CGW-1" in updated_cloud["device_id"].to_list():
+        updated_cloud.loc[updated_cloud["device_id"]=="CGW-1", "resource_type"] = "GATEWAY"
+
+    if "CGW-1" in updated_gateway["device_id"].to_list():
+        updated_gateway["proxy_ids"] = updated_gateway["proxy_ids"].fillna("").astype(str)
+        updated_gateway.loc[updated_gateway["device_id"]=="CGW-1", ["proxy_ids", "target.family"]] = [", ".join(sorted(device_registry.keys())), 
+                                                                                                      "vendor"]
+
+    # ----------------------------
+    # BUILDING POINTS TAB
     # ----------------------------
 
     points_df = sheets.get(TAB_POINTS, pd.DataFrame())
@@ -333,7 +380,7 @@ def process_excel(bambi_file, loadsheet_file, mapping_file):
             "units": units.replace("-", "_") if isinstance(units, str) else units,
             "type": None,
             "description": None,
-            "writable": False,
+            "writable": "false",
             "baseline_value": None,
             "baseline_tolerance": None,
             "baseline_state": None,
@@ -398,37 +445,29 @@ def process_excel(bambi_file, loadsheet_file, mapping_file):
 
     output_file = f"{base}_populated{ext}"
 
+    updated_sheets_map = {
+            TAB_SYSTEM: updated_system,
+            TAB_CLOUD: updated_cloud,
+            TAB_GATEWAY: updated_gateway,
+            TAB_LOCALNET: updated_localnet,
+            TAB_POINTSET: updated_pointset,
+            TAB_POINTS: updated_points,
+        }
+
     with pd.ExcelWriter(output_file, engine="openpyxl") as writer:
 
-        for name, df in sheets.items():
-
-            if name == TAB_POINTS:
-                updated_points.to_excel(
-                    writer,
-                    sheet_name=name,
-                    index=False
-                )
-
-            else:
-                df.to_excel(
-                    writer,
-                    sheet_name=name,
-                    index=False
-                )
+        for name, original_df in sheets.items():
+                    df_to_write = updated_sheets_map.get(name, original_df)
+                    
+                    df_to_write.to_excel(
+                        writer,
+                        sheet_name=name,
+                        index=False
+                    )
 
     # ----------------------------
     # SUMMARY
     # ----------------------------
-
-    print("\nVALIDATION SUMMARY")
-    print("------------------")
-
-    print(f"OK: {summary['OK']}")
-    print(f"Missing system: {summary[TAB_SYSTEM]}")
-    print(f"Missing cloud: {summary[TAB_CLOUD]}")
-    print(f"Missing gateway: {summary[TAB_GATEWAY]}")
-    print(f"Missing localnet: {summary[TAB_LOCALNET]}")
-    print(f"Missing pointset: {summary[TAB_POINTSET]}")
 
     print("\nPOINT SUMMARY")
     print("-------------")

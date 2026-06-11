@@ -97,7 +97,7 @@ def process_loadsheet(loadsheet: pd.DataFrame, mango_config: pd.DataFrame = None
             else:
                 loadsheet.loc[loadsheet['device_name']==dev, 'cloud_device_id'] = df_slice['cloud_device_id'].values[0]
 
-    loadsheet['object'] = loadsheet['objectType'].map(helpers.OBJECT_ID_MAP_BMS_TO_CAMEL) + ":" + loadsheet['objectId'].astype(str)
+    loadsheet['object'] = loadsheet['objectType'].map(helpers.OBJECT_TYPE_INITIALS_TO_CAMEL) + ":" + loadsheet['objectId'].astype(str)
     loadsheet['cloud_point_name'] = loadsheet['standardFieldName']
     print("Loadsheet processed successfully.")
 

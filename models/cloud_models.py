@@ -1,30 +1,6 @@
 import os
 from helpers import helpers
 
-def parse_object_id(ref_string):
-    """
-    Parses device_id and object_id from a metadata string.
-    Example:
-    Input:          'DP_2800039_ANALOG_VALUE_68' or 'bacnet://2800039/AV/68' (Mango version >= 5.3.1).
-    Returned tuple: ('2800039', 'AV:68')
-    Will only work for bacnet XID format, meters have looser XID structure.
-    """
-    try:
-        if "bacnet://" in ref_string:
-            parts = ref_string.replace("//", "/").split("/")
-            type_initials = parts[2]
-        elif "DP_" in ref_string:
-            parts = ref_string.split("_")
-            type_initials = "".join([word[0] for word in parts[2:-1]])
-        else:
-            raise ValueError(f"Unknown XID format: {ref_string}")
-
-        numeric_id = parts[1]
-        index = parts[-1]
-        return str(numeric_id), f"{type_initials}:{index}"
-    except Exception as e:
-        return None, None
-
 class Device:
     def __init__(self, proxy_id=None, numeric_id=None, point_dict=None, device_list=None, metadata=None, guid=None):
         self._proxy_id = proxy_id
@@ -99,7 +75,7 @@ class Device:
         devices_found = []
         points_data = metadata_dict.get("pointset", {}).get("points") or {}
         for k, v in points_data.items():
-            device_id, object_id = parse_object_id(v.get("ref"))
+            device_id, object_id = helpers.xid_to_object_id(v.get("ref"))
             if not (device_id and object_id):
                 continue
 

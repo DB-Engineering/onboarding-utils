@@ -4,7 +4,7 @@ import json
 import yaml
 from collections import OrderedDict
 
-OBJECT_ID_MAP_BMS_TO_CAMEL = {
+OBJECT_TYPE_INITIALS_TO_CAMEL = {
     "AV": "analogValue",
     "AI": "analogInput",
     "AO": "analogOutput",
@@ -14,7 +14,7 @@ OBJECT_ID_MAP_BMS_TO_CAMEL = {
     "MSV": "multiStateValue"
 }
 
-OBJECT_ID_MAP_SITE_MODEL_TO_BMS = {
+OBJECT_TYPE_LONG_TO_INITIALS = {
     "ANALOG_VALUE": "AV",
     "ANALOG_INPUT": "AI",
     "ANALOG_OUTPUT": "AO",
@@ -23,6 +23,19 @@ OBJECT_ID_MAP_SITE_MODEL_TO_BMS = {
     "BINARY_OUTPUT": "BO",
     "MULTI_STATE_VALUE": "MSV"
 }
+
+OBJECT_TYPE_INITIALS_TO_LONG = {
+    "AV": "ANALOG_VALUE",
+    "AI": "ANALOG_INPUT",
+    "AO": "ANALOG_OUTPUT",
+    "BV": "BINARY_VALUE",
+    "BI": "BINARY_INPUT",
+    "BO": "BINARY_OUTPUT",
+    "MSV": "MULTI_STATE_VALUE"
+}
+
+def strip_bacnet_id(bacnet_id: str):
+    return bacnet_id.replace("DEV:", "").replace("bacnet:", "").replace("bacnet-", "")
 
 def snake_to_camel(x: str):
     if not isinstance(x, str):
@@ -42,6 +55,36 @@ def camel_to_snake(text):
             res.append('_')
         res.append(char.lower())
     return "".join(res)
+
+def xid_to_object_id(ref_string):
+    """
+    Parses device_id and object_id from a metadata string.
+    Example:
+    Input:          'DP_2800039_ANALOG_VALUE_68' or 'bacnet://2800039/AV/68' (Mango version >= 5.3.1).
+    Returned tuple: ('2800039', 'AV:68')
+    Will only work for bacnet XID format, meters have looser XID structure.
+    """
+    try:
+        if "bacnet://" in ref_string:
+            parts = ref_string.replace("//", "/").split("/")
+            type_initials = parts[2]
+        elif "DP_" in ref_string:
+            parts = ref_string.split("_")
+            type_initials = "".join([word[0] for word in parts[2:-1]])
+        else:
+            raise ValueError(f"Unknown XID format: {ref_string}")
+
+        numeric_id = parts[1]
+        index = parts[-1]
+        return str(numeric_id), f"{type_initials}:{index}"
+    except Exception as e:
+        return None, None
+
+def object_id_to_xid(device_id, object_type_initials, object_id, new_driver=False):
+    if new_driver==True:
+        return f"bacnet://{device_id}/{object_type_initials}/{object_id}"
+    else:
+        return f"DP_{device_id}_{OBJECT_TYPE_INITIALS_TO_LONG[object_type_initials]}_{object_id}"
 
 def device_id_to_ip_addr(device_id: str):
     """
@@ -233,7 +276,6 @@ def map_states(field_name):
         return None
 
 def get_common_prefix(input_strings: list):
-
     output = os.path.commonprefix(input_strings)
 
     if output.startswith('_'):
