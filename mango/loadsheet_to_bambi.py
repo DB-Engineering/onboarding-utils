@@ -166,7 +166,7 @@ def process_excel(bambi_file, loadsheet_file, mapping_file):
     sheets = {name: xls.parse(name) for name in xls.sheet_names}
 
     loadsheet = pd.read_excel(loadsheet_file)
-    loadsheet = loadsheet.loc[(loadsheet['required']=="YES") & (loadsheet['isMissing']!="YES"), :]
+    loadsheet = loadsheet.loc[(loadsheet['required']=="YES") & (loadsheet['isMissing']!="YES"), REQUIRED_COLS]
 
     proxy_map = load_proxy_map(mapping_file)
 
