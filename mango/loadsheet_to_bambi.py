@@ -162,7 +162,7 @@ def process_excel(bambi_file, loadsheet_file, mapping_file):
     sheets = {name: xls.parse(name) for name in xls.sheet_names}
 
     loadsheet = pd.read_excel(loadsheet_file)
-    loadsheet = loadsheet.loc[(loadsheet['required']=="YES") & (loadsheet['isMissing']!="YES"), REQUIRED_COLS]
+    loadsheet = loadsheet.loc[(loadsheet['required']=="YES") & (loadsheet['isMissing']!="YES"), REQUIRED_COLS].reset_index()
     loadsheet["objectId"] = loadsheet.loc[loadsheet["objectId"].isna()==False, "objectId"].astype(int).astype(str)
 
     proxy_map = load_proxy_map(mapping_file)
