@@ -20,11 +20,11 @@ class Point():
                 }
 
 class BAMBIDevice():
-    def __init__(self, proxy_id=None, system_name=None, bacnet_id=None):
+    def __init__(self, proxy_id=None, system_name=None, bacnet_ids=None, networks=None):
         self._proxy_id = proxy_id
         self.system_name = system_name # control program
-        self.bacnet_id=helpers.strip_bacnet_id(bacnet_id)
-        self.bacnet_network=self.bacnet_id[:5]
+        self.bacnet_ids=bacnet_ids # list[str]
+        self.networks=networks # list[str]
         self.points = []
 
     @property

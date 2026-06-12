@@ -5,6 +5,7 @@ import warnings  # <--- Add this
 from collections import defaultdict, Counter
 
 from models import bambi_models
+from helpers import helpers
 
 # ----------------------------
 # CONFIG
@@ -191,7 +192,9 @@ def process_excel(bambi_file, loadsheet_file, mapping_file):
             continue
 
         code = ", ".join(sorted(asset_loadsheet.controlProgram.dropna().unique().tolist()))
-        bacnet_addr = sorted(asset_loadsheet.deviceId.dropna().unique().tolist())[0] # only one device is allowed for localnet_families_bacnet_addr
+
+        bacnet_ids = sorted([helpers.strip_bacnet_id(i) for i in asset_loadsheet.deviceId.dropna().unique().tolist()])
+        networks = sorted([i[:5] for i in bacnet_ids])
 
         fields = asset_loadsheet.set_index("standardFieldName", drop=True)[["units", "deviceId", "objectType", 
                                                                             "objectId", "isMissing"]].T.to_dict()
@@ -199,7 +202,8 @@ def process_excel(bambi_file, loadsheet_file, mapping_file):
         device = bambi_models.BAMBIDevice(
             proxy_id=device_id,
             system_name=code,
-            bacnet_id=bacnet_addr
+            bacnet_ids=bacnet_ids,
+            networks=networks
             )
         device.add_points_from_dict(fields)
 
@@ -218,7 +222,7 @@ def process_excel(bambi_file, loadsheet_file, mapping_file):
         if device_id not in updated_system['device_id'].to_list():
             new_row = pd.DataFrame([{"device_id": device_id,
                                      "name": device_obj.system_name,
-                                     "description": f"bacnet-{device_obj.bacnet_id}",
+                                     "description": ", ".join([f"bacnet-{i}" for i in device_obj.bacnet_ids]),
                                      "location.site": site_name
                                      }])
             updated_system = pd.concat([updated_system, new_row], ignore_index=True)
@@ -240,8 +244,8 @@ def process_excel(bambi_file, loadsheet_file, mapping_file):
             new_row = pd.DataFrame([{"device_id": device_id,
                                      "parent.target": "CGW-1",
                                      "parent.family": "bacnet",
-                                     "families.bacnet.addr": device_obj.bacnet_id,
-                                     "families.bacnet.network": device_obj.bacnet_network,
+                                     "families.bacnet.addr": ", ".join(device_obj.bacnet_ids),
+                                     "families.bacnet.network": ", ".join(device_obj.networks),
                                      "families.iot.addr": device_id
                                      }])
             updated_localnet = pd.concat([updated_localnet, new_row], ignore_index=True)
