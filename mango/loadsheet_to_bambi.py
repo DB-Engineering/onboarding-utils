@@ -35,6 +35,7 @@ TABS_TO_VALIDATE = [
     TAB_GATEWAY,
     TAB_LOCALNET,
     TAB_POINTSET,
+    TAB_POINTS
 ]
 
 def main():
@@ -218,6 +219,8 @@ def process_excel(bambi_file, loadsheet_file, mapping_file):
     updated_localnet = sheets.get(TAB_LOCALNET, pd.DataFrame()).copy()
     updated_pointset = sheets.get(TAB_POINTSET, pd.DataFrame()).copy()
 
+    updated_devices = set()
+
     for device_id, device_obj in sorted(device_lookup.items()):
         if device_id not in updated_system['device_id'].to_list():
             new_row = pd.DataFrame([{"device_id": device_id,
@@ -226,12 +229,14 @@ def process_excel(bambi_file, loadsheet_file, mapping_file):
                                      "location.site": site_name
                                      }])
             updated_system = pd.concat([updated_system, new_row], ignore_index=True)
+            updated_devices.add(device_id)
 
         if device_id not in updated_cloud['device_id'].to_list():
             new_row = pd.DataFrame([{"device_id": device_id,
                                      "resource_type": "PROXIED"
                                      }])
             updated_cloud = pd.concat([updated_cloud, new_row], ignore_index=True)
+            updated_devices.add(device_id)
 
         if device_id not in updated_gateway['device_id'].to_list():
             new_row = pd.DataFrame([{"device_id": device_id,
@@ -239,6 +244,7 @@ def process_excel(bambi_file, loadsheet_file, mapping_file):
                                      "target.family": "vendor"
                                      }])
             updated_gateway = pd.concat([updated_gateway, new_row], ignore_index=True)
+            updated_devices.add(device_id)
 
         if device_id not in updated_localnet['device_id'].to_list():
             new_row = pd.DataFrame([{"device_id": device_id,
@@ -249,16 +255,23 @@ def process_excel(bambi_file, loadsheet_file, mapping_file):
                                      "families.iot.addr": device_id
                                      }])
             updated_localnet = pd.concat([updated_localnet, new_row], ignore_index=True)
+            updated_devices.add(device_id)
 
         if device_id not in updated_pointset['device_id'].to_list():
             new_row = pd.DataFrame([{"device_id": device_id,
                                      "points_template_name": f"{device_id}_template"
                                      }])
             updated_pointset = pd.concat([updated_pointset, new_row], ignore_index=True)
+            updated_devices.add(device_id)
+
 
     # Add information to gateway device
     # Assuming that bacnet gateway already exists in initial site model and that its name is CGW-1
     if "CGW-1" in updated_system["device_id"].to_list():
+        cols_to_cast = ["description", "node_type", "location.site"]
+        for col in cols_to_cast:
+            if col in updated_system.columns:
+                updated_system[col] = updated_system[col].fillna("").astype(str)
         updated_system.loc[updated_system["device_id"]=="CGW-1", ["description", "node_type", "location.site"]] = ["bacnet communication gateway", 
                                                                                                                    "virtual_device", 
                                                                                                                    site_name]
@@ -267,9 +280,19 @@ def process_excel(bambi_file, loadsheet_file, mapping_file):
         updated_cloud.loc[updated_cloud["device_id"]=="CGW-1", "resource_type"] = "GATEWAY"
 
     if "CGW-1" in updated_gateway["device_id"].to_list():
+        existing_proxy_ids = updated_gateway.loc[updated_gateway["device_id"]=="CGW-1", "proxy_ids"].item()
+        if isinstance(existing_proxy_ids, str):
+            proxy_ids_list = [i.strip() for i in existing_proxy_ids.split(",")]
+        else:
+            proxy_ids_list = []
+        proxy_ids_list.extend(device_lookup.keys())
+        proxy_ids_list = sorted(proxy_ids_list)
+
         updated_gateway["proxy_ids"] = updated_gateway["proxy_ids"].fillna("").astype(str)
-        updated_gateway.loc[updated_gateway["device_id"]=="CGW-1", ["proxy_ids", "target.family"]] = [", ".join(sorted(device_lookup.keys())), 
+        updated_gateway.loc[updated_gateway["device_id"]=="CGW-1", ["proxy_ids", "target.family"]] = [", ".join(proxy_ids_list), 
                                                                                                       "vendor"]
+
+        updated_devices.add("CGW-1")
 
     # ----------------------------
     # BUILDING POINTS TAB
@@ -292,8 +315,6 @@ def process_excel(bambi_file, loadsheet_file, mapping_file):
             existing_refs.add(r.get("ref"))
 
     new_points = []
-
-    updated_devices = set()
 
     written_points = 0
     dup_keys = 0
@@ -398,6 +419,17 @@ def process_excel(bambi_file, loadsheet_file, mapping_file):
     # FILTER TABS TO UPDATED DEVICES
     # ----------------------------
 
+    # ALL DATAFRAMES HAVE TO BE UPDATED INSIDE THIS STRUCTURE
+    updated_sheets_map = {
+            TAB_SYSTEM: updated_system,
+            TAB_CLOUD: updated_cloud,
+            TAB_GATEWAY: updated_gateway,
+            TAB_LOCALNET: updated_localnet,
+            TAB_POINTSET: updated_pointset,
+            TAB_POINTS: updated_points,
+        }
+
+
     def filter_by_devices(df, device_col="device_id"):
 
         if df.empty or device_col not in df.columns:
@@ -408,20 +440,18 @@ def process_excel(bambi_file, loadsheet_file, mapping_file):
     # Apply filtering
 
     for tab in TABS_TO_VALIDATE:
+        df_to_filter = updated_sheets_map.get(tab, pd.DataFrame())
 
-        sheets[tab] = filter_by_devices(
-            sheets.get(tab, pd.DataFrame())
-        )
+        if tab==TAB_POINTS:
+            df_to_filter = df_to_filter.loc[
+                df_to_filter["points_template_name"]
+                .str.replace("_template", "")
+                .isin(updated_devices), :
+            ]
+            updated_sheets_map[tab] = df_to_filter
+            continue
 
-    # Special handling for points tab
-
-    if not updated_points.empty:
-
-        updated_points = updated_points[
-            updated_points["points_template_name"]
-            .str.replace("_template", "")
-            .isin(updated_devices)
-        ]
+        updated_sheets_map[tab] = filter_by_devices(updated_sheets_map[tab])
 
     # ----------------------------
     # WRITE OUTPUT
@@ -431,14 +461,6 @@ def process_excel(bambi_file, loadsheet_file, mapping_file):
 
     output_file = f"{base}_populated{ext}"
 
-    updated_sheets_map = {
-            TAB_SYSTEM: updated_system,
-            TAB_CLOUD: updated_cloud,
-            TAB_GATEWAY: updated_gateway,
-            TAB_LOCALNET: updated_localnet,
-            TAB_POINTSET: updated_pointset,
-            TAB_POINTS: updated_points,
-        }
 
     with pd.ExcelWriter(output_file, engine="openpyxl") as writer:
 
