@@ -1,6 +1,45 @@
 import os
 from helpers import helpers
 
+def parse_object_id(dp_string):
+    """
+    Parses device_id and object_id from a metadata string.
+    """
+    try:
+        if not isinstance(dp_string, str):
+            return None, None
+
+        # Handle URI format: bacnet://4013203/AV/13
+        if "bacnet://" in dp_string:
+            # Remove protocol and split by slash
+            clean_uri = dp_string.replace("bacnet://", "")
+            parts = clean_uri.split("/")
+            
+            # Now parts is ['4013203', 'AV', '13']
+            if len(parts) < 3:
+                return None, None
+                
+            numeric_id = parts[0]
+            type_initials = parts[1]
+            index = parts[2]
+            return str(numeric_id), f"{type_initials}:{index}"
+
+        # Handle Legacy format: DP_2800039_ANALOG_VALUE_68
+        elif "DP_" in dp_string:
+            parts = dp_string.split("_")
+            if len(parts) < 4:
+                return None, None
+                
+            numeric_id = parts[1]
+            type_initials = "".join([word[0] for word in parts[2:-1]])
+            index = parts[-1]
+            return str(numeric_id), f"{type_initials}:{index}"
+        
+        return None, None
+            
+    except Exception as e:
+        return None, None
+
 class Device:
     def __init__(self, proxy_id=None, numeric_id=None, point_dict=None, device_list=None, metadata=None, guid=None):
         self._proxy_id = proxy_id
