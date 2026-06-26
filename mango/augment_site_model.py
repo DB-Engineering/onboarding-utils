@@ -59,7 +59,7 @@ def main():
             print(f"Discovery wasn't found: {item_path}. Skipping.")
             continue
 
-        cloud_num_id = discovery_match.item()
+        cloud_num_id = str(discovery_match.iloc[0])
 
 
         if "CGW" in d: # gateways have their own metadata and are not in carson config

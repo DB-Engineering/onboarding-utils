@@ -38,7 +38,7 @@ def main():
                                                                         "units", "deviceId", "objectType", "objectId", "isMissing"]]
 
         display_name = asset
-        code = ", ".join(sorted(asset_loadsheet.controlProgram.dropna().unique().tolist()))
+        code = ", ".join(sorted(asset_loadsheet.controlProgram.dropna().astype(str).unique().tolist()))
         type = asset_loadsheet.typeName.dropna().unique().tolist()
         if len(type) != 1:
             print(f"[ERROR] Asset has no typeName: {asset}. Check Loadsheet.")
@@ -72,7 +72,8 @@ def main():
                     print(f"[WARNING] No numeric_id found for proxy_id: {device.proxy_id}")
                     device.numeric_id = None
                 elif len(device_match) > 1:
-                    print(f"[WARNING] Multiple numeric_id found for {device.proxy_id}, {', '.join(device_match.tolist())}. Using the first one.")
+                    match_list = [str(x) for x in device_match.tolist()]
+                    print(f"[WARNING] Multiple numeric_id found for {device.proxy_id}, {', '.join(match_list)}. Using the first one.")
                     device.numeric_id = str(device_match.values[0])
                 else:
                     device.numeric_id = str(device_match.values[0])
